@@ -950,122 +950,86 @@
   }
   // ── CAROUSEL ──
   (function(){
-    // All image filenames in images/ folder
-    // Add/remove filenames here when you update the folder
-    // Images 1-73 .jpeg — random selection of ~20 for the carousel
-    const allImgs = [];
-    for(let i=1;i<=73;i++) allImgs.push('images/'+i+'.jpeg');
-    // Shuffle and pick 20 random images
-    const shuffled = allImgs.sort(()=>Math.random()-.5);
-    const imgs = shuffled.slice(0, 20);
-
+    const SKIP = 72; // owners photo — excluded from gallery
+    const TOTAL = 73;
     const track = document.getElementById('cTrack');
     const dotsWrap = document.getElementById('cDots');
     if(!track) return;
 
-    let loaded = [];
-    let pending = imgs.length;
-    let current = 0;
-    let autoTimer;
+    // Build all slides immediately (no async needed — browser handles missing images gracefully)
+    const srcs = [];
+    for(let i=1;i<=TOTAL;i++){
+      if(i===SKIP) continue;
+      srcs.push('images/'+i+'.jpeg');
+    }
 
-    // Try each image, build slides only for ones that load
-    imgs.forEach(src => {
-      const img = new Image();
-      img.onload = () => { loaded.push(src); check(); };
-      img.onerror = () => { check(); };
+    // Clone x3 for infinite loop
+    [...srcs,...srcs,...srcs].forEach(src=>{
+      const slide = document.createElement('div');
+      slide.className = 'c-slide';
+      const img = document.createElement('img');
       img.src = src;
+      img.alt = 'Beach & Chill Vibes';
+      img.loading = 'lazy';
+      // Hide broken images gracefully
+      img.onerror = function(){ this.closest('.c-slide').style.display='none'; };
+      slide.appendChild(img);
+      track.appendChild(slide);
     });
 
-    function check(){
-      pending--;
-      if(pending === 0) build();
+    // Dots
+    srcs.forEach((_,i)=>{
+      const d=document.createElement('div');
+      d.className='c-dot'+(i===0?' active':'');
+      d.onclick=()=>goTo(i+srcs.length);
+      dotsWrap.appendChild(d);
+    });
+
+    const n = srcs.length;
+    let cur = n; // start at middle set
+    let autoTimer;
+
+    // Init position (no transition)
+    requestAnimationFrame(()=>{
+      track.style.transition='none';
+      track.style.transform=`translateX(-${cur*sw()}px)`;
+    });
+
+    function sw(){
+      const s=track.querySelector('.c-slide');
+      return s ? s.getBoundingClientRect().width+16 : 300;
     }
-
-    function build(){
-      // Sort by filename number
-      loaded.sort((a,b)=>{
-        const na = parseInt(a.replace(/\D+(\d+).*/, '$1')) || 999;
-        const nb = parseInt(b.replace(/\D+(\d+).*/, '$1')) || 999;
-        return na - nb;
-      });
-
-      if(loaded.length === 0){ document.querySelector('.gallery')?.remove(); return; }
-
-      // Build slides × 3 for infinite scroll illusion
-      const all = [...loaded,...loaded,...loaded];
-      all.forEach(src => {
-        const slide = document.createElement('div');
-        slide.className = 'c-slide';
-        const i = document.createElement('img');
-        i.src = src; i.loading = 'lazy'; i.alt = 'Beach & Chill Vibes';
-        slide.appendChild(i);
-        track.appendChild(slide);
-      });
-
-      // Dots
-      loaded.forEach((_,i)=>{
-        const d = document.createElement('div');
-        d.className='c-dot'+(i===0?' active':'');
-        d.onclick=()=>goTo(i);
-        dotsWrap.appendChild(d);
-      });
-
-      // Start in middle set
-      current = loaded.length;
-      track.style.transition = 'none';
-      track.style.transform = `translateX(-${current * sw()}px)`;
-
-      startAuto();
-
-      // Arrow buttons
-      document.getElementById('cPrev')?.addEventListener('click',()=>goTo(current-1));
-      document.getElementById('cNext')?.addEventListener('click',()=>goTo(current+1));
-
-      // Touch/drag
-      const vp = document.getElementById('cViewport');
-      let sx=0;
-      vp.addEventListener('mousedown',e=>{ sx=e.pageX; });
-      window.addEventListener('mouseup',e=>{
-        const d=e.pageX-sx;
-        if(Math.abs(d)>40) goTo(d<0?current+1:current-1);
-      });
-      vp.addEventListener('touchstart',e=>{ sx=e.touches[0].clientX; },{passive:true});
-      vp.addEventListener('touchend',e=>{
-        const d=e.changedTouches[0].clientX-sx;
-        if(Math.abs(d)>40) goTo(d<0?current+1:current-1);
-      });
-    }
-
-    function sw(){ const s=track.querySelector('.c-slide'); return s?(s.offsetWidth+16):300; }
 
     function goTo(idx){
-      current = idx;
-      track.style.transition = 'transform .5s cubic-bezier(.25,.46,.45,.94)';
-      track.style.transform = `translateX(-${current * sw()}px)`;
-
-      // Update dots using modulo on loaded.length
-      const dotIdx = ((current % loaded.length) + loaded.length) % loaded.length;
+      cur=idx;
+      track.style.transition='transform .5s cubic-bezier(.25,.46,.45,.94)';
+      track.style.transform=`translateX(-${cur*sw()}px)`;
+      const dotIdx=((cur%n)+n)%n;
       document.querySelectorAll('.c-dot').forEach((d,i)=>d.classList.toggle('active',i===dotIdx));
-
-      // Infinite loop: snap silently when reaching clone sets
       setTimeout(()=>{
-        if(current <= 0){
-          current = loaded.length;
-          track.style.transition='none';
-          track.style.transform=`translateX(-${current*sw()}px)`;
-        } else if(current >= loaded.length*2){
-          current = loaded.length;
-          track.style.transition='none';
-          track.style.transform=`translateX(-${current*sw()}px)`;
-        }
-      }, 520);
-
+        if(cur<=0){cur=n;track.style.transition='none';track.style.transform=`translateX(-${cur*sw()}px)`;}
+        else if(cur>=n*2){cur=n;track.style.transition='none';track.style.transform=`translateX(-${cur*sw()}px)`;}
+      },520);
       resetAuto();
     }
 
-    function startAuto(){ autoTimer = setInterval(()=>goTo(current+1), 3500); }
+    function startAuto(){ autoTimer=setInterval(()=>goTo(cur+1),3500); }
     function resetAuto(){ clearInterval(autoTimer); startAuto(); }
+
+    document.getElementById('cPrev')?.addEventListener('click',()=>goTo(cur-1));
+    document.getElementById('cNext')?.addEventListener('click',()=>goTo(cur+1));
+
+    let sx=0;
+    const vp=document.getElementById('cViewport');
+    vp?.addEventListener('mousedown',e=>sx=e.pageX);
+    window.addEventListener('mouseup',e=>{ const d=e.pageX-sx; if(Math.abs(d)>40) goTo(d<0?cur+1:cur-1); });
+    vp?.addEventListener('touchstart',e=>{ sx=e.touches[0].clientX; },{passive:true});
+    vp?.addEventListener('touchend',e=>{ const d=e.changedTouches[0].clientX-sx; if(Math.abs(d)>40) goTo(d<0?cur+1:cur-1); });
+
+    startAuto();
   })();
+
+
 
 
 
