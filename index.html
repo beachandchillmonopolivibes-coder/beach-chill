@@ -1517,20 +1517,43 @@
     });
 
     // --- LOGICA VISUALE TESSERA UTENTE ---
-    window.loadUserCard = async (email, nomeCompleto) => {
-        const cardDoc = await getDoc(doc(db, "cards", email));
-        if (!cardDoc.exists()) return;
 
-        const data = cardDoc.data();
-        const rimanenti = data.rimanenti !== undefined ? data.rimanenti : 0;
-        const totali = data.totali !== undefined ? data.totali : 0;
+    window.loadUserCard = async (cardId, nomeCompleto) => {
+        let cardData = null;
+        let actualDocId = cardId; // Ci serve per sapere quale doc aggiornare quando gratta
+
+        // 1. Tenta la ricerca veloce per ID Documento
+        const cardRef = doc(db, "cards", cardId);
+        const cardDoc = await getDoc(cardRef);
+
+        if (cardDoc.exists()) {
+            cardData = cardDoc.data();
+        } else {
+            // 2. Piano B: Se l'ID del documento è casuale, cerca dentro i campi!
+            const q = query(collection(db, "cards"), where("email", "==", cardId));
+            const querySnap = await getDocs(q);
+            if (!querySnap.empty) {
+                cardData = querySnap.docs[0].data();
+                actualDocId = querySnap.docs[0].id; // Salva l'ID reale del documento
+            }
+        }
+
+        const container = document.getElementById('grattini-container');
+        container.innerHTML = "";
+
+        if (!cardData) {
+            console.error("Tessera non trovata nel database per:", cardId);
+            document.getElementById('user-rimanenti').innerText = "0";
+            document.getElementById('user-completati').innerText = "0";
+            return;
+        }
+
+        const rimanenti = cardData.rimanenti !== undefined ? cardData.rimanenti : 0;
+        const totali = cardData.totali !== undefined ? cardData.totali : 0;
         const completati = totali - rimanenti;
 
         document.getElementById('user-rimanenti').innerText = rimanenti;
         document.getElementById('user-completati').innerText = completati;
-
-        const container = document.getElementById('grattini-container');
-        container.innerHTML = "";
 
         if (rimanenti === 0) {
             container.innerHTML = `
@@ -1556,7 +1579,8 @@
             const div = document.createElement('div');
             div.className = "grattino-container";
             div.innerHTML = `<div class="grattino-cover"></div>`;
-            div.onclick = () => confirmAndScratch(email, div, nomeCompleto);
+            // Passiamo l'actualDocId invece dell'email per evitare errori
+            div.onclick = () => confirmAndScratch(actualDocId, div, nomeCompleto);
             container.appendChild(div);
         }
     };
@@ -1640,27 +1664,43 @@
     }
 
     // --- LOGICA DELLE 3 AZIONI ADMIN ---
+
     const updateWorkout = async (actionType) => {
-        const email = document.getElementById('admin-user-search').value.trim().toLowerCase();
+        const emailInput = document.getElementById('admin-user-search').value.trim().toLowerCase();
         const amount = parseInt(document.getElementById('admin-workout-amount').value);
         const errorBox = document.getElementById('admin-inline-error');
         const errorMsg = document.getElementById('admin-inline-error-msg');
 
         if(errorBox) errorBox.style.display = 'none';
 
-        if(!email || !amount || amount < 1) {
-            errorMsg.innerHTML = "Inserisci un'email valida e una quantità."; errorBox.style.display = 'block'; return;
+        if(!emailInput || !amount || amount < 1) {
+            errorMsg.innerHTML = "Inserisci un utente valido e una quantità."; errorBox.style.display = 'block'; return;
         }
 
-        const cardRef = doc(db, "cards", email);
-        const cardDoc = await getDoc(cardRef);
-        if(!cardDoc.exists()) {
-            errorMsg.innerHTML = "Utente non trovato."; errorBox.style.display = 'block'; return;
+        let cardRef = null;
+        let data = null;
+
+        // 1. Cerca per ID Documento
+        const directDoc = await getDoc(doc(db, "cards", emailInput));
+        if (directDoc.exists()) {
+            cardRef = doc(db, "cards", emailInput);
+            data = directDoc.data();
+        } else {
+            // 2. Cerca all'interno dei campi
+            const q = query(collection(db, "cards"), where("email", "==", emailInput));
+            const querySnap = await getDocs(q);
+            if (!querySnap.empty) {
+                cardRef = doc(db, "cards", querySnap.docs[0].id);
+                data = querySnap.docs[0].data();
+            }
         }
 
-        const data = cardDoc.data();
+        if(!cardRef || !data) {
+            errorMsg.innerHTML = "Utente non trovato nel database."; errorBox.style.display = 'block'; return;
+        }
+
         const currentRimanenti = data.rimanenti || 0;
-        const nomeCompleto = (data.nome && data.cognome) ? `${data.nome} ${data.cognome}` : email;
+        const nomeCompleto = (data.nome && data.cognome) ? `${data.nome} ${data.cognome}` : emailInput;
 
         try {
             if (actionType === 'add') {
@@ -1674,7 +1714,7 @@
                     errorBox.style.display = 'block'; return;
                 }
                 await updateDoc(cardRef, { rimanenti: increment(amount), totali: increment(amount) });
-                await addDoc(collection(db, "logs"), { user_email: email, user_nome_completo: nomeCompleto, action_type: "admin_add", timestamp: serverTimestamp(), amount_changed: amount });
+                await addDoc(collection(db, "logs"), { user_email: emailInput, user_nome_completo: nomeCompleto, action_type: "admin_add", timestamp: serverTimestamp(), amount_changed: amount });
                 openFeedbackModal(true, "✅ Ricaricata", `Aggiunti ${amount} allenamenti a ${nomeCompleto}.`);
             }
             else if (actionType === 'vidima') {
@@ -1682,7 +1722,7 @@
                     errorMsg.innerHTML = `${nomeCompleto} ha solo <strong>${currentRimanenti} allenamenti</strong>.`; errorBox.style.display = 'block'; return;
                 }
                 await updateDoc(cardRef, { rimanenti: increment(-amount) });
-                await addDoc(collection(db, "logs"), { user_email: email, user_nome_completo: nomeCompleto, action_type: "admin_vidima", timestamp: serverTimestamp(), amount_changed: -amount });
+                await addDoc(collection(db, "logs"), { user_email: emailInput, user_nome_completo: nomeCompleto, action_type: "admin_vidima", timestamp: serverTimestamp(), amount_changed: -amount });
                 openFeedbackModal(true, "✔️ Vidimati", `${amount} allenamenti consumati per ${nomeCompleto}.`);
             }
             else if (actionType === 'remove') {
@@ -1690,7 +1730,7 @@
                     errorMsg.innerHTML = `${nomeCompleto} ha solo <strong>${currentRimanenti} allenamenti</strong>.`; errorBox.style.display = 'block'; return;
                 }
                 await updateDoc(cardRef, { rimanenti: increment(-amount), totali: increment(-amount) });
-                await addDoc(collection(db, "logs"), { user_email: email, user_nome_completo: nomeCompleto, action_type: "admin_remove", timestamp: serverTimestamp(), amount_changed: -amount });
+                await addDoc(collection(db, "logs"), { user_email: emailInput, user_nome_completo: nomeCompleto, action_type: "admin_remove", timestamp: serverTimestamp(), amount_changed: -amount });
                 openFeedbackModal(true, "🗑️ Rimossi", `Rimossi ${amount} allenamenti per errore a ${nomeCompleto}.`);
             }
             document.getElementById('admin-user-search').value = ""; document.getElementById('admin-workout-amount').value = "1";
