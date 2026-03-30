@@ -439,27 +439,76 @@
 
         /* Modali (Pop-up) Stile Neon/Glass */
         .mp-modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 10000;
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
         }
-        .mp-modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .mp-modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
 
         .mp-modal {
-            background: rgba(20, 20, 20, 0.95); /* Più scuro e profondo */
-            border: 1px solid rgba(243, 156, 18, 0.5); /* Bordo Arancio Neon */
-            box-shadow: 0 0 30px rgba(243, 156, 18, 0.15), inset 0 0 20px rgba(0,0,0,0.8);
-            backdrop-filter: blur(12px);
-            border-radius: 16px; color: #fff;
-            padding: 30px; width: 90%; max-width: 450px; position: relative;
+            background: #1e1e1e;
+            width: 90%; /* Perfetto per gli smartphone */
+            max-width: 400px; /* Limite massimo per i PC */
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px);
+            transition: transform 0.3s ease-in-out;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-sizing: border-box;
+        }
+        .mp-modal-overlay.open .mp-modal {
+            transform: translateY(0);
         }
 
+        /* Ottimizzazione del bottone di chiusura X su mobile */
         .mp-modal-close {
-            position: absolute; top: 15px; right: 20px; color: #aaa;
-            cursor: pointer; font-size: 28px; border: none; background: transparent; transition: color 0.3s;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 26px;
+            color: #888;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            padding: 5px; /* Area di tocco più larga per le dita */
+            line-height: 1;
+            z-index: 10;
         }
-        .mp-modal-close:hover { color: #f39c12; text-shadow: 0 0 10px #f39c12; }
+
+        .mp-modal-close:hover {
+            color: #f39c12;
+        }
+        .mp-modal .mp-input, .mp-modal select {
+            width: 100%;
+            padding: 14px 12px; /* Più alti per facilitare il tocco da smartphone */
+            margin-top: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: white;
+            box-sizing: border-box;
+            font-size: 16px; /* Previene lo zoom automatico su iOS */
+        }
 
         /* Tabs Login/Registrazione */
         .auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -949,7 +998,7 @@
 
         <h3 style="color: #fff; text-align: center; margin-bottom: 20px;">Accedi</h3>
 
-        <input type="email" id="auth-email" placeholder="Email" class="mp-input">
+        <input type="text" id="auth-username" placeholder="Nome.Cognome (es: mario.rossi)" class="mp-input" style="text-transform: lowercase;">
         <input type="password" id="auth-password" placeholder="Password" class="mp-input">
 
         <button id="auth-action-btn" class="mp-btn" style="width:100%; margin-top:15px; position: relative; z-index: 50; touch-action: manipulation; pointer-events: auto;">Accedi</button>
@@ -1029,9 +1078,7 @@
                     <input type="text" id="admin-new-nome" placeholder="Nome" class="mp-input" style="flex:1;">
                     <input type="text" id="admin-new-cognome" placeholder="Cognome" class="mp-input" style="flex:1;">
                 </div>
-                <input type="date" id="admin-new-dob" placeholder="Data di Nascita" class="mp-input" title="Data di Nascita">
-                <input type="email" id="admin-new-email" placeholder="Email (es: utente@email.it)" class="mp-input">
-                <input type="password" id="admin-new-password" placeholder="Password Temporanea (min. 6 caratteri)" class="mp-input">
+                <input type="password" id="admin-new-password" placeholder="Password (min. 6 caratteri)" class="mp-input">
                 <button id="admin-create-user-btn" class="mp-btn" style="background:#2ecc71; border-color:#2ecc71; color:#121212; padding: 12px; font-weight:bold; margin-top: 5px;">Crea Utente e Genera Tessera</button>
                 <p id="admin-create-error-msg" style="color:#e74c3c; font-size: 13px; text-align:center; margin-top: 5px; min-height: 15px;"></p>
             </div>
@@ -1425,13 +1472,20 @@
     document.getElementById('auth-action-btn').addEventListener('click', async () => {
         const errEl = document.getElementById('auth-error-msg'); errEl.innerText = "";
 
-        const e = document.getElementById('auth-email').value.trim().toLowerCase();
+        // Prende il Nome.Cognome inserito, toglie gli spazi vuoti accidentali e mette tutto minuscolo
+        const usernameInput = document.getElementById('auth-username').value.trim().toLowerCase().replace(/\s+/g, '');
         const p = document.getElementById('auth-password').value;
 
-        if(!e || !p) { errEl.innerText = "Inserisci email e password."; return; }
+        if(!usernameInput || !p) { errEl.innerText = "Inserisci Nome.Cognome e password."; return; }
+
+        // TRUCCO: Aggiungiamo il dominio finto solo se l'utente non sta usando una vecchia email con la chiocciola
+        let loginEmail = usernameInput;
+        if (!loginEmail.includes('@')) {
+            loginEmail = usernameInput + "@beach.local";
+        }
 
         try {
-            await signInWithEmailAndPassword(auth, e, p);
+            await signInWithEmailAndPassword(auth, loginEmail, p);
         } catch(error) {
             errEl.innerText = "Credenziali errate.";
         }
@@ -1685,12 +1739,10 @@
 
         const nome = document.getElementById('admin-new-nome').value.trim();
         const cognome = document.getElementById('admin-new-cognome').value.trim();
-        const dob = document.getElementById('admin-new-dob').value;
-        const email = document.getElementById('admin-new-email').value.trim().toLowerCase();
         const password = document.getElementById('admin-new-password').value;
 
-        if (!nome || !cognome || !dob || !email || !password) {
-            errorMsg.innerText = "Compila tutti i campi per creare l'utente.";
+        if (!nome || !cognome || !password) {
+            errorMsg.innerText = "Compila Nome, Cognome e Password.";
             return;
         }
         if (password.length < 6) {
@@ -1698,37 +1750,39 @@
             return;
         }
 
-        try {
-            // 1. Crea l'utente nell'app secondaria (così l'Admin non viene disconnesso dal suo account)
-            const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        // Generazione automatica del formato "nome.cognome"
+        const cleanNome = nome.toLowerCase().replace(/\s+/g, '');
+        const cleanCognome = cognome.toLowerCase().replace(/\s+/g, '');
+        const username = `${cleanNome}.${cleanCognome}`;
+        const fakeEmail = `${username}@beach.local`;
 
-            // 2. Fai subito il logout nell'app secondaria per sicurezza
+        try {
+            // 1. Crea l'utente con la finta email
+            const userCred = await createUserWithEmailAndPassword(secondaryAuth, fakeEmail, password);
             await signOut(secondaryAuth);
 
-            // 3. Salva i dati anagrafici nel database (usando il db principale dell'Admin)
+            // 2. Salva in DB usando lo username come identificativo
             await setDoc(doc(db, "users", userCred.user.uid), {
-                email: email, role: 'user', nome: nome, cognome: cognome, dob: dob
+                username: username, fakeEmail: fakeEmail, role: 'user', nome: nome, cognome: cognome
             });
 
-            // 4. Inizializza la tessera dell'utente
-            await setDoc(doc(db, "cards", email), {
-                rimanenti: 0, totali: 0, email: email, nome: nome, cognome: cognome
+            // 3. Genera la tessera usando lo username come ID del documento
+            await setDoc(doc(db, "cards", username), {
+                rimanenti: 0, totali: 0, email: username, nome: nome, cognome: cognome
             });
 
-            // 5. Pulisci i campi
+            // 4. Pulisci campi
             document.getElementById('admin-new-nome').value = "";
             document.getElementById('admin-new-cognome').value = "";
-            document.getElementById('admin-new-dob').value = "";
-            document.getElementById('admin-new-email').value = "";
             document.getElementById('admin-new-password').value = "";
 
-            // 6. Mostra Feedback e aggiorna la tabella in tempo reale
-            openFeedbackModal(true, "Utente Creato", `La tessera per ${nome} ${cognome} è pronta!`);
+            // 5. Mostra il Feedback dicendo all'admin quale username dare al cliente
+            openFeedbackModal(true, "Utente Creato", `Tessera pronta! L'accesso per il cliente è: <br><strong style="font-size: 20px;">${username}</strong>`);
             loadAdminData();
 
         } catch (error) {
             console.error(error);
-            errorMsg.innerText = "Errore durante la creazione. L'email potrebbe essere errata o già in uso.";
+            errorMsg.innerText = "Errore. (Forse questo Nome.Cognome esiste già?)";
         }
     });
 </script>
