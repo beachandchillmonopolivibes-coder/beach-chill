@@ -28,7 +28,7 @@ jobs:
         run: |
           sed -i 's/FIREBASE_API_KEY/${{ secrets.FIREBASE_API_KEY }}/g' index.html
           sed -i 's/FIREBASE_AUTH_DOMAIN/${{ secrets.FIREBASE_AUTH_DOMAIN }}/g' index.html
-          sed -i 's/FIREBASE_PROJECT_ID/${{ secrets.FIREBASE_PROJECT_ID }}/g' index.html
+          sed -i 's/FIREBASE_AUTH_PROJECTID/${{ secrets.FIREBASE_AUTH_PROJECTID }}/g' index.html
           sed -i 's/FIREBASE_AUTH_STORAGEBUCKET/${{ secrets.FIREBASE_AUTH_STORAGEBUCKET }}/g' index.html
           sed -i 's/FIREBASE_AUTH_MESSAGINGSENDERID/${{ secrets.FIREBASE_AUTH_MESSAGINGSENDERID }}/g' index.html
           sed -i 's/FIREBASE_API_APPID/${{ secrets.FIREBASE_API_APPID }}/g' index.html
