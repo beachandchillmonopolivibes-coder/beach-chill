@@ -1390,30 +1390,42 @@
             document.getElementById('nav-logout-btn').classList.remove('hidden');
             closeModal('auth-modal');
 
-            // INSERISCI QUI LA TUA EMAIL (O LE EMAIL) DEGLI AMMINISTRATORI
-            const adminEmails = ["tua.email@esempio.it", "socio@esempio.it"];
+            try {
+                // 1. Cerca il documento utente tramite il suo UID univoco
+                let userDoc = await getDoc(doc(db, "users", user.uid));
 
-            if (adminEmails.includes(user.email.toLowerCase())) {
-                // Se è un admin, mostra il tasto Gestione
-                document.getElementById('nav-admin-btn').classList.remove('hidden');
-                document.getElementById('nav-user-btn').classList.add('hidden'); // Nasconde la tessera utente all'admin
-            } else {
-                // Se è un utente normale, mostra la tessera e nasconde la Gestione
+                // 2. Se non lo trova per UID, prova a cercarlo usando l'email (utile se l'admin è stato creato a mano nel DB)
+                if (!userDoc.exists()) {
+                    userDoc = await getDoc(doc(db, "users", user.email));
+                }
+
+                // 3. Verifica il ruolo in modo sicuro
+                if (userDoc.exists() && userDoc.data().role === 'admin') {
+                    // È UN ADMIN: Mostra il tasto gestione
+                    document.getElementById('nav-admin-btn').classList.remove('hidden');
+                    document.getElementById('nav-user-btn').classList.add('hidden');
+                } else {
+                    // È UN UTENTE NORMALE: Mostra la tessera
+                    document.getElementById('nav-admin-btn').classList.add('hidden');
+                    document.getElementById('nav-user-btn').classList.remove('hidden');
+
+                    const nome = userDoc.exists() ? userDoc.data().nome : '';
+                    const cognome = userDoc.exists() ? userDoc.data().cognome : '';
+                    const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
+
+                    document.getElementById('modal-user-email').innerText = nomeCompleto;
+                    loadUserCard(user.email, nomeCompleto);
+                }
+            } catch (error) {
+                console.error("Errore durante la verifica dei permessi:", error);
+                // In caso di errore di lettura, tratta l'utente come utente base per sicurezza
                 document.getElementById('nav-admin-btn').classList.add('hidden');
                 document.getElementById('nav-user-btn').classList.remove('hidden');
+                document.getElementById('modal-user-email').innerText = user.email;
+                loadUserCard(user.email, user.email);
             }
-
-            // Recupera il nome dell'utente dal database per mostrarlo sulla tessera
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            const nome = userDoc.exists() ? userDoc.data().nome : '';
-            const cognome = userDoc.exists() ? userDoc.data().cognome : '';
-            const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
-
-            document.getElementById('modal-user-email').innerText = nomeCompleto;
-            loadUserCard(user.email, nomeCompleto);
-
         } else {
-            // Se nessuno è loggato, resetta la navbar
+            // NESSUNO LOGGATO
             document.getElementById('nav-login-btn').classList.remove('hidden');
             document.getElementById('nav-user-btn').classList.add('hidden');
             document.getElementById('nav-admin-btn').classList.add('hidden');
