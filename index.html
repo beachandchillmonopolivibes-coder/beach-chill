@@ -1383,28 +1383,37 @@
     document.getElementById('nav-admin-btn').addEventListener('click', () => { openModal('admin-modal'); loadAdminData(); });
 
     // --- CONTROLLO ACCESSO (NOME UTENTE) ---
+
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             document.getElementById('nav-login-btn').classList.add('hidden');
             document.getElementById('nav-logout-btn').classList.remove('hidden');
             closeModal('auth-modal');
 
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists() && userDoc.data().role === 'admin') {
+            // INSERISCI QUI LA TUA EMAIL (O LE EMAIL) DEGLI AMMINISTRATORI
+            const adminEmails = ["tua.email@esempio.it", "socio@esempio.it"];
+
+            if (adminEmails.includes(user.email.toLowerCase())) {
+                // Se è un admin, mostra il tasto Gestione
                 document.getElementById('nav-admin-btn').classList.remove('hidden');
-                document.getElementById('nav-user-btn').classList.add('hidden');
+                document.getElementById('nav-user-btn').classList.add('hidden'); // Nasconde la tessera utente all'admin
             } else {
+                // Se è un utente normale, mostra la tessera e nasconde la Gestione
                 document.getElementById('nav-admin-btn').classList.add('hidden');
                 document.getElementById('nav-user-btn').classList.remove('hidden');
-
-                const nome = userDoc.exists() ? userDoc.data().nome : '';
-                const cognome = userDoc.exists() ? userDoc.data().cognome : '';
-                const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
-
-                document.getElementById('modal-user-email').innerText = nomeCompleto;
-                loadUserCard(user.email, nomeCompleto);
             }
+
+            // Recupera il nome dell'utente dal database per mostrarlo sulla tessera
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            const nome = userDoc.exists() ? userDoc.data().nome : '';
+            const cognome = userDoc.exists() ? userDoc.data().cognome : '';
+            const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
+
+            document.getElementById('modal-user-email').innerText = nomeCompleto;
+            loadUserCard(user.email, nomeCompleto);
+
         } else {
+            // Se nessuno è loggato, resetta la navbar
             document.getElementById('nav-login-btn').classList.remove('hidden');
             document.getElementById('nav-user-btn').classList.add('hidden');
             document.getElementById('nav-admin-btn').classList.add('hidden');
