@@ -1390,42 +1390,30 @@
             document.getElementById('nav-logout-btn').classList.remove('hidden');
             closeModal('auth-modal');
 
-            try {
-                // 1. Cerca il documento utente tramite il suo UID univoco
-                let userDoc = await getDoc(doc(db, "users", user.uid));
-
-                // 2. Se non lo trova per UID, prova a cercarlo usando l'email (utile se l'admin è stato creato a mano nel DB)
-                if (!userDoc.exists()) {
-                    userDoc = await getDoc(doc(db, "users", user.email));
-                }
-
-                // 3. Verifica il ruolo in modo sicuro
-                if (userDoc.exists() && userDoc.data().role === 'admin') {
-                    // È UN ADMIN: Mostra il tasto gestione
-                    document.getElementById('nav-admin-btn').classList.remove('hidden');
-                    document.getElementById('nav-user-btn').classList.add('hidden');
-                } else {
-                    // È UN UTENTE NORMALE: Mostra la tessera
-                    document.getElementById('nav-admin-btn').classList.add('hidden');
-                    document.getElementById('nav-user-btn').classList.remove('hidden');
-
-                    const nome = userDoc.exists() ? userDoc.data().nome : '';
-                    const cognome = userDoc.exists() ? userDoc.data().cognome : '';
-                    const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
-
-                    document.getElementById('modal-user-email').innerText = nomeCompleto;
-                    loadUserCard(user.email, nomeCompleto);
-                }
-            } catch (error) {
-                console.error("Errore durante la verifica dei permessi:", error);
-                // In caso di errore di lettura, tratta l'utente come utente base per sicurezza
+            // QUESTO È ESATTAMENTE IL TUO CODICE ORIGINALE
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            console.log("1. Login effettuato con l'email:", user.email);
+            console.log("2. L'UID di questo utente è:", user.uid);
+            console.log("3. Il documento esiste su Firestore?", userDoc.exists());
+            if (userDoc.exists()) {
+                console.log("4. Il Ruolo letto dal database è:", userDoc.data().role);
+            }
+            if (userDoc.exists() && userDoc.data().role === 'admin') {
+                document.getElementById('nav-admin-btn').classList.remove('hidden');
+                document.getElementById('nav-user-btn').classList.add('hidden');
+            } else {
                 document.getElementById('nav-admin-btn').classList.add('hidden');
                 document.getElementById('nav-user-btn').classList.remove('hidden');
-                document.getElementById('modal-user-email').innerText = user.email;
-                loadUserCard(user.email, user.email);
+
+                // Mostra Nome e Cognome, se non ci sono mostra l'email
+                const nome = userDoc.exists() ? userDoc.data().nome : '';
+                const cognome = userDoc.exists() ? userDoc.data().cognome : '';
+                const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : user.email;
+
+                document.getElementById('modal-user-email').innerText = nomeCompleto;
+                loadUserCard(user.email, nomeCompleto);
             }
         } else {
-            // NESSUNO LOGGATO
             document.getElementById('nav-login-btn').classList.remove('hidden');
             document.getElementById('nav-user-btn').classList.add('hidden');
             document.getElementById('nav-admin-btn').classList.add('hidden');
