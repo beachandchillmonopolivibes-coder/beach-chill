@@ -642,6 +642,29 @@
             display: flex;
         }
 
+        /* --- STILI WIDGET TORNEI --- */
+        .widget-container {
+            background: rgba(11, 12, 16, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        .widget-container h3 { color: #00f3ff; margin-top: 0; text-align: center; border-bottom: 2px solid rgba(0, 243, 255, 0.3); padding-bottom: 10px; text-transform: uppercase; }
+        .widget-container h4 { color: #f39c12; margin-bottom: 5px; border-bottom: 1px dashed #333; padding-bottom: 5px; }
+        .match-card { background: rgba(255,255,255,0.05); padding: 10px 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #00f3ff; display: flex; justify-content: space-between; align-items: center; }
+        .team-name { font-weight: bold; color: #fff; }
+        .score { font-size: 1.2rem; font-weight: bold; color: #00f3ff; }
+        .status { font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        .standings-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .standings-table th { text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1); padding: 8px; color: #888; text-transform: uppercase;}
+        .standings-table td { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px; color: #fff;}
+        .pts { font-weight: bold; color: #f39c12; }
+
         /* Spazio per non far scivolare il sito sotto l'header */
         body { padding-top: 80px; }
 
@@ -798,6 +821,8 @@
             </div>
         </div>
     </div>
+
+    <div id="tournaments-container" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; padding: 20px;"></div>
 </section>
 
 <!-- LOCATION -->
@@ -1180,6 +1205,19 @@
             </div>
         </div>
 
+        <h4 style="color:#00bfff; margin-top:30px; margin-bottom: 15px; font-size: 16px; text-transform:uppercase; letter-spacing:1px;">Gestione Tornei Live</h4>
+        <div style="background: rgba(0, 191, 255, 0.05); padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 1px solid rgba(0, 191, 255, 0.2);">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="text" id="admin-tourn-title" placeholder="Titolo (es: Torneo Estivo Vibes)" class="mp-input">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="admin-tourn-id" placeholder="ID Torneo" class="mp-input" style="flex:1;">
+                    <input type="text" id="admin-tourn-apikey" placeholder="API Key" class="mp-input" style="flex:1;">
+                </div>
+                <button id="admin-add-tourn-btn" class="mp-btn" style="background:#00bfff; border-color:#00bfff; color:#121212; padding: 12px; font-weight:bold; margin-top: 5px;">+ Pubblica Torneo Live</button>
+            </div>
+            <div id="admin-tournaments-list" style="margin-top: 20px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
     </div>
 </div>
 
@@ -1413,6 +1451,138 @@
         entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target); } });
     },{threshold:.1});
     document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+
+    // ==========================================
+    // --- MOTORE GESTIONE IFRAME TORNEI LIVE ---
+    // ==========================================
+
+    // 1. Carica gli Iframe nella vista pubblica
+    window.loadPublicTournaments = async () => {
+        const container = document.getElementById('tournaments-container');
+        if(!container) return;
+
+        container.innerHTML = "";
+        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const iframe = document.createElement('iframe');
+
+            // Passa i dati segretamente all'Iframe tramite URL
+            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(data.apiKey)}`;
+
+            // Stile dell'iframe per renderlo invisibile ai bordi e fluido
+            iframe.style.width = "100%";
+            iframe.style.maxWidth = "600px";
+            iframe.style.height = "500px"; // Altezza fissa sicura
+            iframe.style.border = "none";
+            iframe.style.borderRadius = "12px";
+            iframe.style.overflow = "hidden";
+
+            container.appendChild(iframe);
+        });
+    };
+
+    // 2. Carica la lista nell'Admin Panel
+    window.loadTournamentsAdmin = async () => {
+        const list = document.getElementById('admin-tournaments-list');
+        if(!list) return;
+
+        list.innerHTML = "<p style='text-align:center; color:#aaa;'>Caricamento...</p>";
+        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
+        list.innerHTML = "";
+
+        if(snap.empty) {
+            list.innerHTML = "<p style='text-align:center; color:#666; font-size:13px;'>Nessun torneo attivo.</p>";
+            return;
+        }
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            list.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; border:1px solid rgba(0, 191, 255, 0.2);">
+                    <div>
+                        <strong style="color:#00bfff; font-size:15px;">${data.title}</strong><br>
+                        <span style="font-size:11px; color:#aaa;">ID: ${data.tournId}</span>
+                    </div>
+                    <button onclick="deleteTournament('${docSnap.id}')" style="background:rgba(231, 76, 60, 0.2); color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; padding:6px 12px; cursor:pointer;">Termina</button>
+                </div>`;
+        });
+    };
+
+    // 3. Elimina un torneo dal DB (Admin)
+    window.deleteTournament = async (id) => {
+        if(confirm("Vuoi davvero rimuovere questo torneo dalla vista pubblica?")) {
+            await deleteDoc(doc(db, "tournaments", id));
+            loadTournamentsAdmin();
+            loadPublicTournaments();
+        }
+    };
+
+    // 4. Listener Bottone "Pubblica Torneo"
+    const btnAddTourn = document.getElementById('admin-add-tourn-btn');
+    if(btnAddTourn) {
+        btnAddTourn.addEventListener('click', async () => {
+            const title = document.getElementById('admin-tourn-title').value.trim();
+            const tournId = document.getElementById('admin-tourn-id').value.trim();
+            const apiKey = document.getElementById('admin-tourn-apikey').value.trim();
+
+            if(!title || !tournId || !apiKey) {
+                alert("Compila tutti i campi: Titolo, ID Torneo e API Key!");
+                return;
+            }
+
+            await addDoc(collection(db, "tournaments"), {
+                title: title, tournId: tournId, apiKey: apiKey, createdAt: serverTimestamp()
+            });
+
+            document.getElementById('admin-tourn-title').value = "";
+            document.getElementById('admin-tourn-id').value = "";
+            document.getElementById('admin-tourn-apikey').value = "";
+
+            loadTournamentsAdmin();
+            loadPublicTournaments();
+        });
+    }
+
+    // --- CARICA IL TUO WIDGET INTATTO NELLA PAGINA ---
+    window.loadPublicTournaments = async () => {
+        const container = document.getElementById('tournaments-container');
+        if(!container) return;
+
+        container.innerHTML = "";
+        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const iframe = document.createElement('iframe');
+
+            // Qui avviene la magia: chiama il TUO file widget.html e gli "inietta" la chiave nell'URL!
+            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(data.apiKey)}`;
+
+            // Regola le dimensioni della finestra per non farla tagliare
+            iframe.style.width = "100%";
+            iframe.style.maxWidth = "600px";
+            iframe.style.height = "550px";
+            iframe.style.border = "none";
+            iframe.style.borderRadius = "12px";
+
+            container.appendChild(iframe);
+        });
+    };
+
+    // Avvia i widget al caricamento della pagina
+    loadPublicTournaments();
+
+    // --- ESECUZIONI AUTOMATICHE ---
+    const oldLoadAdminData = window.loadAdminData;
+    window.loadAdminData = async function() {
+        if(oldLoadAdminData) await oldLoadAdminData();
+        loadTournamentsAdmin();
+    };
+
+    loadPublicTournaments();
 </script>
 
 <!-- SCRIPT LOGIN -->
@@ -1420,7 +1590,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
     // Nota: rimossa l'importazione di createUserWithEmailAndPassword per disabilitare la registrazione pubblica
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, increment, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
     // LE TUE CHIAVI FIREBASE
     const firebaseConfig = {
