@@ -130,12 +130,12 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiKey = urlParams.get('apiKey');
-        const projectId = urlParams.get('projectId');
-        const tournamentId = urlParams.get('tournId');
-        const appId = urlParams.get('appId');
-        const customTitle = urlParams.get('title') || 'Torneo Live';
+        const apiKey = urlParams.get('apiKey');         // Variabile fissa passata da index.html (GitHub)
+        const projectId = urlParams.get('projectId');   // Variabile fissa passata da index.html (GitHub)
+        const appId = urlParams.get('appId');           // Variabile fissa passata da index.html (GitHub)
+
+        const tournamentId = urlParams.get('tournId');  // Variabile DINAMICA
+        const customTitle = urlParams.get('title') || 'Torneo Live'; // Variabile DINAMICA
 
         // === CONFIGURAZIONE WEBMASTER ===
         // Sostituisci questo valore con la "API Serverless Key" generata dalla Dashboard Admin
