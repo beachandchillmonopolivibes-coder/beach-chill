@@ -621,6 +621,27 @@
         .mp-logo-nav { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 10px rgba(243, 156, 18, 0.3); }
         .mp-title-nav { font-size: 22px; margin: 0; white-space: nowrap; color: #fff; font-weight: bold;}
 
+        /* Stile e animazione del Menu Mobile */
+        .mobile-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #1a1a1a; /* Sfondo scuro e solido */
+            padding: 20px;
+            box-sizing: border-box;
+            border-bottom: 1px solid #333;
+            z-index: 998; /* Deve stare sotto i bottoni ma sopra il resto */
+            display: none;
+            flex-direction: column;
+            gap: 15px; /* Spazio elegante tra i bottoni */
+            box-shadow: 0px 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .mobile-menu.open {
+            display: flex;
+        }
+
         /* Spazio per non far scivolare il sito sotto l'header */
         body { padding-top: 80px; }
 
@@ -691,14 +712,12 @@
         <a href="#vibes" onclick="closeMobile()">Vibes</a>
         <a class="nav-mobile-cta" href="https://www.instagram.com/beach_and_chill_monopoli_vibes/" target="_blank" rel="noopener">Instagram →</a>
 
-        <div id="nav-auth-container" class="mp-nav-auth">
-            <button id="nav-login-btn" class="mp-nav-btn">Accedi</button>
-            <button id="nav-user-btn" class="mp-nav-btn hidden">La mia Tessera</button>
-            <button id="nav-admin-btn" class="mp-nav-btn mp-admin-btn hidden">Gestione Utenti</button>
-            <button id="nav-logout-btn" class="mp-nav-btn mp-logout-btn hidden">Esci</button>
+        <div style="margin-top: 30px; padding: 0 20px; display: flex; flex-direction: column; gap: 15px;">
+            <button id="nav-login-btn-mobile" class="mp-btn" style="width: 100%; padding: 15px; font-size: 18px; position: relative; z-index: 1000; touch-action: manipulation;">Accedi</button>
+            <button id="nav-user-btn-mobile" class="mp-btn hidden" style="width: 100%; padding: 15px; font-size: 18px; position: relative; z-index: 1000; touch-action: manipulation;">La Mia Tessera</button>
+            <button id="nav-admin-btn-mobile" class="mp-btn hidden" style="width: 100%; padding: 15px; font-size: 18px; background: rgba(243, 156, 18, 0.1); border: 1px solid #f39c12; color: #f39c12; position: relative; z-index: 1000; touch-action: manipulation;">Gestione Admin</button>
+            <button id="nav-logout-btn-mobile" class="mp-btn btn-cancel hidden" style="width: 100%; padding: 15px; font-size: 18px; position: relative; z-index: 1000; touch-action: manipulation;">Esci</button>
         </div>
-
-
     </div>
 </nav>
 
@@ -1429,17 +1448,23 @@
     document.getElementById('nav-user-btn').addEventListener('click', () => openModal('user-modal'));
     document.getElementById('nav-admin-btn').addEventListener('click', () => { openModal('admin-modal'); loadAdminData(); });
 
+    document.getElementById('nav-login-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('auth-modal'); });
+    document.getElementById('nav-user-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('user-modal'); });
+    document.getElementById('nav-admin-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('admin-modal'); loadAdminData(); });
+
     // --- CONTROLLO ACCESSO (NOME UTENTE) ---
 
+    // --- CONTROLLO ACCESSO (NOME UTENTE E RUOLO DA FIRESTORE) ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
+            // Nascondi Login, Mostra Logout (Desktop + Mobile)
             document.getElementById('nav-login-btn').classList.add('hidden');
+            document.getElementById('nav-login-btn-mobile').classList.add('hidden');
             document.getElementById('nav-logout-btn').classList.remove('hidden');
+            document.getElementById('nav-logout-btn-mobile').classList.remove('hidden');
             closeModal('auth-modal');
 
             // --- TRUCCO NOME.COGNOME ---
-            // Rimuove il dominio finto per leggere correttamente la tessera,
-            // ma lascia intatte le vecchie email reali degli utenti storici.
             let cardId = user.email;
             if (cardId.includes('@beach.local')) {
                 cardId = cardId.replace('@beach.local', '');
@@ -1456,13 +1481,17 @@
 
                 // 3. Verifica il ruolo in modo sicuro
                 if (userDoc.exists() && userDoc.data().role === 'admin') {
-                    // È UN ADMIN: Mostra il tasto gestione
+                    // È UN ADMIN: Mostra il tasto gestione (Desktop + Mobile)
                     document.getElementById('nav-admin-btn').classList.remove('hidden');
+                    document.getElementById('nav-admin-btn-mobile').classList.remove('hidden');
                     document.getElementById('nav-user-btn').classList.add('hidden');
+                    document.getElementById('nav-user-btn-mobile').classList.add('hidden');
                 } else {
-                    // È UN UTENTE NORMALE: Mostra la tessera
+                    // È UN UTENTE NORMALE: Mostra la tessera (Desktop + Mobile)
                     document.getElementById('nav-admin-btn').classList.add('hidden');
+                    document.getElementById('nav-admin-btn-mobile').classList.add('hidden');
                     document.getElementById('nav-user-btn').classList.remove('hidden');
+                    document.getElementById('nav-user-btn-mobile').classList.remove('hidden');
 
                     const nome = userDoc.exists() ? userDoc.data().nome : '';
                     const cognome = userDoc.exists() ? userDoc.data().cognome : '';
@@ -1470,22 +1499,28 @@
 
                     document.getElementById('modal-user-email').innerText = nomeCompleto;
 
-                    // CARICA LA TESSERA USANDO IL CARD-ID CORRETTO
+                    // CARICA LA TESSERA
                     loadUserCard(cardId, nomeCompleto);
                 }
             } catch (error) {
                 console.error("Errore durante la verifica dei permessi:", error);
                 document.getElementById('nav-admin-btn').classList.add('hidden');
+                document.getElementById('nav-admin-btn-mobile').classList.add('hidden');
                 document.getElementById('nav-user-btn').classList.remove('hidden');
+                document.getElementById('nav-user-btn-mobile').classList.remove('hidden');
                 document.getElementById('modal-user-email').innerText = cardId;
                 loadUserCard(cardId, cardId);
             }
         } else {
-            // NESSUNO LOGGATO
+            // NESSUNO LOGGATO: Resetta tutta la navbar (Desktop + Mobile)
             document.getElementById('nav-login-btn').classList.remove('hidden');
+            document.getElementById('nav-login-btn-mobile').classList.remove('hidden');
             document.getElementById('nav-user-btn').classList.add('hidden');
+            document.getElementById('nav-user-btn-mobile').classList.add('hidden');
             document.getElementById('nav-admin-btn').classList.add('hidden');
+            document.getElementById('nav-admin-btn-mobile').classList.add('hidden');
             document.getElementById('nav-logout-btn').classList.add('hidden');
+            document.getElementById('nav-logout-btn-mobile').classList.add('hidden');
         }
     });
 
@@ -1512,9 +1547,16 @@
         }
     });
 
-    document.getElementById('nav-logout-btn').addEventListener('click', () => {
-        signOut(auth); closeModal('user-modal'); closeModal('admin-modal'); closeModal('user-history-modal');
-    });
+    const eseguiLogout = () => {
+        signOut(auth);
+        closeModal('user-modal');
+        closeModal('admin-modal');
+        closeModal('user-history-modal');
+        if (typeof closeMobile === 'function') closeMobile(); // Chiude il tuo menu in modo sicuro
+    };
+
+    document.getElementById('nav-logout-btn').addEventListener('click', eseguiLogout);
+    document.getElementById('nav-logout-btn-mobile').addEventListener('click', eseguiLogout);
 
     // --- LOGICA VISUALE TESSERA UTENTE ---
 
