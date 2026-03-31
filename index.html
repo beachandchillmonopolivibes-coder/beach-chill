@@ -1209,10 +1209,7 @@
         <div style="background: rgba(0, 191, 255, 0.05); padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 1px solid rgba(0, 191, 255, 0.2);">
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <input type="text" id="admin-tourn-title" placeholder="Titolo (es: Torneo Estivo Vibes)" class="mp-input">
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="admin-tourn-id" placeholder="ID Torneo" class="mp-input" style="flex:1;">
-                    <input type="text" id="admin-tourn-apikey" placeholder="API Key" class="mp-input" style="flex:1;">
-                </div>
+                <input type="text" id="admin-tourn-id" placeholder="ID Torneo (es: XYZ123)" class="mp-input">
                 <button id="admin-add-tourn-btn" class="mp-btn" style="background:#00bfff; border-color:#00bfff; color:#121212; padding: 12px; font-weight:bold; margin-top: 5px;">+ Pubblica Torneo Live</button>
             </div>
             <div id="admin-tournaments-list" style="margin-top: 20px; display:flex; flex-direction:column; gap:10px;"></div>
@@ -1469,13 +1466,12 @@
             const data = docSnap.data();
             const iframe = document.createElement('iframe');
 
-            // Passa i dati segretamente all'Iframe tramite URL
-            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(data.apiKey)}`;
+            // Passa l'ID del torneo dinamico + le variabili FISSE prese dal firebaseConfig principale
+            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(firebaseConfig.apiKey)}&projectId=${encodeURIComponent(firebaseConfig.projectId)}&appId=${encodeURIComponent(firebaseConfig.appId)}`;
 
-            // Stile dell'iframe per renderlo invisibile ai bordi e fluido
             iframe.style.width = "100%";
             iframe.style.maxWidth = "600px";
-            iframe.style.height = "500px"; // Altezza fissa sicura
+            iframe.style.height = "550px";
             iframe.style.border = "none";
             iframe.style.borderRadius = "12px";
             iframe.style.overflow = "hidden";
@@ -1526,20 +1522,19 @@
         btnAddTourn.addEventListener('click', async () => {
             const title = document.getElementById('admin-tourn-title').value.trim();
             const tournId = document.getElementById('admin-tourn-id').value.trim();
-            const apiKey = document.getElementById('admin-tourn-apikey').value.trim();
 
-            if(!title || !tournId || !apiKey) {
-                alert("Compila tutti i campi: Titolo, ID Torneo e API Key!");
+            if(!title || !tournId) {
+                alert("Compila Titolo e ID Torneo!");
                 return;
             }
 
+            // Salva solo titolo e ID torneo (le API key sono gestite in modo fisso)
             await addDoc(collection(db, "tournaments"), {
-                title: title, tournId: tournId, apiKey: apiKey, createdAt: serverTimestamp()
+                title: title, tournId: tournId, createdAt: serverTimestamp()
             });
 
             document.getElementById('admin-tourn-title').value = "";
             document.getElementById('admin-tourn-id').value = "";
-            document.getElementById('admin-tourn-apikey').value = "";
 
             loadTournamentsAdmin();
             loadPublicTournaments();
