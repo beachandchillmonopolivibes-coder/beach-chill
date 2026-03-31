@@ -164,18 +164,20 @@
         });
 
         function renderWidget(data) {
-            // Usa il titolo personalizzato inserito dall'admin
-            let html = `<h2>${customTitle}</h2>`;
+            let headerHtml = `<h2>${customTitle}</h2>`;
+            let leftColumn = "";
+            let rightColumn = "";
 
+            // --- COLONNA SINISTRA: PARTITE ---
             // 1. Partite Live
             const liveMatches = data.matches ? data.matches.filter(m => !m.isFinished) : [];
             if (liveMatches.length > 0) {
-                html += `<h3>Partite Live / Prossime</h3>`;
+                leftColumn += `<h3>Partite Live / Prossime</h3>`;
                 liveMatches.forEach(match => {
                     const t1Name = getTeamName(data.groups, match.team1Id);
                     const t2Name = getTeamName(data.groups, match.team2Id);
 
-                    html += `
+                    leftColumn += `
                     <div class="match-card">
                         <div class="meta">
                             <span>${match.phaseType ? match.phaseType.replace('_', ' ') : ''}</span>
@@ -196,11 +198,11 @@
             // 2. Ultimi Risultati
             const finishedMatches = data.matches ? data.matches.filter(m => m.isFinished).slice(-3) : [];
             if (finishedMatches.length > 0) {
-                 html += `<h3>Ultimi Risultati</h3>`;
+                 leftColumn += `<h3>Ultimi Risultati</h3>`;
                  finishedMatches.forEach(match => {
                     const t1Name = getTeamName(data.groups, match.team1Id);
                     const t2Name = getTeamName(data.groups, match.team2Id);
-                    html += `
+                    leftColumn += `
                     <div class="match-card finished">
                         <div class="meta"><span>${match.phaseType ? match.phaseType.replace('_', ' ') : ''}</span> <span>FINITA</span></div>
                         <div class="team-row"><span>${t1Name}</span> <span class="score">${match.team1Score.join(' - ')}</span></div>
@@ -209,12 +211,18 @@
                  });
             }
 
-            // 3. Classifiche Gironi
+            // Se non ci sono partite, metti un messaggio segnaposto
+            if(leftColumn === "") {
+                leftColumn = `<p style="color:#aaa; text-align:center;">Nessuna partita al momento.</p>`;
+            }
+
+
+            // --- COLONNA DESTRA: CLASSIFICHE ---
             if (data.groups && data.groups.length > 0) {
-                html += `<h3>Classifiche Gironi</h3>`;
+                rightColumn += `<h3>Classifiche Gironi</h3>`;
                 data.groups.forEach(group => {
-                    html += `<h4>${group.name}</h4>`;
-                    html += `
+                    rightColumn += `<h4>${group.name}</h4>`;
+                    rightColumn += `
                     <table class="standings-table">
                         <thead>
                             <tr>
@@ -228,7 +236,7 @@
                     `;
                     group.teams.forEach(team => {
                         const diff = team.totalPointsScored - team.totalPointsConceded;
-                        html += `
+                        rightColumn += `
                         <tr>
                             <td>${team.name}</td>
                             <td class="pts">${team.points}</td>
@@ -236,11 +244,19 @@
                             <td>${diff > 0 ? '+'+diff : diff}</td>
                         </tr>`;
                     });
-                    html += `</tbody></table>`;
+                    rightColumn += `</tbody></table>`;
                 });
+            } else {
+                rightColumn = `<p style="color:#aaa; text-align:center;">Classifiche non ancora disponibili.</p>`;
             }
 
-            widgetDiv.innerHTML = html;
+            // --- UNISCI TUTTO NELLA GRIGLIA ---
+            widgetDiv.innerHTML = headerHtml + `
+                <div class="widget-grid">
+                    <div class="col-left">${leftColumn}</div>
+                    <div class="col-right">${rightColumn}</div>
+                </div>
+            `;
         }
 
         function getTeamName(groups, teamId) {
