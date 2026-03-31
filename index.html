@@ -676,12 +676,20 @@
             #user-rimanenti, #user-completati { font-size: 36px !important; }
 
             #mobileNav {
-                height: 100% !important; /* Forza il riempimento di tutto lo schermo */
-                box-sizing: border-box !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background-color: rgba(18, 18, 18, 0.98) !important; /* Sfondo scuro coprente */
+                z-index: 99999 !important; /* Primissimo piano assoluto */
+                display: flex !important;
+                flex-direction: column !important;
                 justify-content: flex-start !important;
                 padding-top: 80px !important;
                 padding-bottom: 40px !important;
                 overflow-y: auto !important;
+                box-sizing: border-box !important;
             }
 
             #mobileNav a {
@@ -1121,10 +1129,11 @@
             <div style="display: flex; flex-direction: column; gap: 15px;">
 
                 <div style="position: relative;">
-                    <label style="color:#f39c12; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Seleziona Utente</label>
-                    <select id="admin-user-search" class="mp-input" style="margin-top: 5px; font-size: 16px; background-color: #2a2a2a; color: white;">
-                        <option value="">-- Scegli un utente --</option>
-                    </select>
+                    <label style="color:#f39c12; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Cerca / Seleziona Utente</label>
+                    <input type="text" id="admin-user-search" class="mp-input" placeholder="Digita nome..." style="margin-top: 5px; font-size: 16px; background-color: #2a2a2a; color: white;" autocomplete="off">
+
+                    <div id="admin-user-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #1e1e1e; border: 1px solid #f39c12; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 9999; box-shadow: 0px 5px 15px rgba(0,0,0,0.8); margin-top: 5px;">
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
@@ -1658,20 +1667,19 @@
     };
 
     // --- CARICAMENTO DATI ADMIN ---
+    window.adminUsersList = []; // Array globale per i suggerimenti
+
     async function loadAdminData() {
         const tbody = document.getElementById('admin-users-tbody');
-        const userSelect = document.getElementById('admin-user-search'); // La variabile mancante è qui!
         const logsDiv = document.getElementById('admin-logs-list');
 
         tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 15px;'>Caricamento...</td></tr>";
 
         try {
-            // 1. Tabella e Select
+            // 1. Tabella e salvataggio utenti
             const userSnapshot = await getDocs(query(collection(db, "cards"), orderBy("email")));
             tbody.innerHTML = "";
-            if (userSelect) {
-                userSelect.innerHTML = '<option value="">-- Scegli un utente --</option>';
-            }
+            window.adminUsersList = []; // Svuota la lista vecchia
 
             userSnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
@@ -1693,10 +1701,8 @@
                     </td>
                   </tr>`;
 
-                // Popoliamo la nuova tendina
-                if (userSelect) {
-                    userSelect.innerHTML += `<option value="${email}">${nomeCompleto} (Rimasti: ${rimanenti})</option>`;
-                }
+                // Salva i dati per la ricerca ibrida
+                window.adminUsersList.push({ email: email, nomeCompleto: nomeCompleto });
             });
 
             // 2. Ultimi 10 Logs globali
@@ -1727,9 +1733,68 @@
                 if(logsDiv.innerHTML === "") logsDiv.innerHTML = "<p style='text-align:center; color:#666;'>Nessun log recente valido.</p>";
             }
         } catch (error) {
-            console.error("Errore nel caricamento dei dati admin: ", error);
-            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 15px; color:#e74c3c;'>Errore nel caricamento dati.</td></tr>";
+            console.error(error);
+            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 15px; color:#e74c3c;'>Errore.</td></tr>";
         }
+    }
+
+    const searchInput = document.getElementById('admin-user-search');
+    const dropdown = document.getElementById('admin-user-dropdown');
+
+    if (searchInput && dropdown) {
+        // Mentre digiti, filtra la lista
+        searchInput.addEventListener('input', function() {
+            const val = this.value.toLowerCase().trim();
+            dropdown.innerHTML = '';
+
+            if (!val) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const filtered = window.adminUsersList.filter(u =>
+                u.nomeCompleto.toLowerCase().includes(val) ||
+                u.email.toLowerCase().includes(val)
+            );
+
+            if (filtered.length > 0) {
+                dropdown.style.display = 'block';
+                filtered.forEach(u => {
+                    const div = document.createElement('div');
+                    div.style.padding = '12px 15px';
+                    div.style.borderBottom = '1px solid #333';
+                    div.style.cursor = 'pointer';
+                    div.style.color = '#fff';
+                    div.innerHTML = `<strong>${u.nomeCompleto}</strong> <span style="font-size:12px; color:#aaa;">(${u.email})</span>`;
+
+                    // onmousedown è fondamentale su mobile per evitare che si chiuda prima del click
+                    div.onmousedown = (e) => {
+                        e.preventDefault();
+                        searchInput.value = u.email; // Inserisce l'email corretta nell'input per i bottoni
+                        dropdown.style.display = 'none';
+                    };
+
+                    // Effetto passaggio mouse (per PC)
+                    div.onmouseover = () => div.style.background = 'rgba(243,156,18,0.2)';
+                    div.onmouseout = () => div.style.background = 'transparent';
+
+                    dropdown.appendChild(div);
+                });
+            } else {
+                dropdown.style.display = 'block';
+                dropdown.innerHTML = '<div style="padding: 12px; color: #e74c3c;">Nessun utente trovato</div>';
+            }
+        });
+
+        // Nascondi suggerimenti se clicchi fuori
+        searchInput.addEventListener('blur', () => {
+            dropdown.style.display = 'none';
+        });
+
+        // Mostra di nuovo se ci clicchi sopra e c'è del testo
+        searchInput.addEventListener('focus', () => {
+            if(searchInput.value) searchInput.dispatchEvent(new Event('input'));
+        });
     }
 
     // --- LOGICA DELLE 3 AZIONI ADMIN ---
