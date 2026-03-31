@@ -130,24 +130,22 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-        const apiKey = urlParams.get('apiKey');         // Variabile fissa passata da index.html (GitHub)
-        const projectId = urlParams.get('projectId');   // Variabile fissa passata da index.html (GitHub)
-        const appId = urlParams.get('appId');           // Variabile fissa passata da index.html (GitHub)
+       // QUESTE RIGHE DEVONO ESSERE LE PRIME IN ASSOLUTO DELLO SCRIPT!
+        const urlParams = new URLSearchParams(window.location.search);
 
-        const tournamentId = urlParams.get('tournId');  // Variabile DINAMICA
-        const customTitle = urlParams.get('title') || 'Torneo Live'; // Variabile DINAMICA
+        const apiKey = urlParams.get('apiKey');   
+        const projectId = urlParams.get('projectId');  
+        const appId = urlParams.get('appId'); 
 
-        // === CONFIGURAZIONE WEBMASTER ===
-        // Sostituisci questo valore con la "API Serverless Key" generata dalla Dashboard Admin
-        const API_KEY = tournamentId;
+        const tournamentId = urlParams.get('tournId');  
+        const customTitle = urlParams.get('title') || 'Torneo Live'; 
 
-        // Configurazione Firebase base (Prendi questa dal file src/lib/firebase.ts o Firebase Console)
-        // Solo i campi projectId e databaseURL sono strettamente necessari per le letture anonime
+    // Configurazione Firebase base del widget
         const firebaseConfig = {
-            apiKey: apiKey, // Inizia solitamente con AIzaSy...
-            projectId: projectId,
-            appId: appId // Modificato da 'app' a 'appId'
-        };
+           apiKey: apiKey, 
+           projectId: projectId,
+           appId: appId 
+       };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
