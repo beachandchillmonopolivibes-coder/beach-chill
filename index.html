@@ -1460,21 +1460,28 @@
         if(!container) return;
 
         container.innerHTML = "";
+        // Questa chiamata usa il DB del SITO per sapere quali tornei mostrare
         const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
 
         snap.forEach(docSnap => {
             const data = docSnap.data();
             const iframe = document.createElement('iframe');
 
-            // Passa l'ID del torneo dinamico + le variabili FISSE prese dal firebaseConfig principale
-            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(firebaseConfig.apiKey)}&projectId=${encodeURIComponent(firebaseConfig.projectId)}&appId=${encodeURIComponent(firebaseConfig.appId)}`;
+            // Passa l'ID del torneo (dal DB sito) e le chiavi del WIDGET (dal widgetBaseConfig)
+            const params = new URLSearchParams({
+                title: data.title,
+                tournId: data.tournId,
+                apiKey: widgetBaseConfig.apiKey,
+                projectId: widgetBaseConfig.projectId,
+                appId: widgetBaseConfig.appId
+            });
 
+            iframe.src = `widget.html?${params.toString()}`;
             iframe.style.width = "100%";
             iframe.style.maxWidth = "600px";
             iframe.style.height = "550px";
             iframe.style.border = "none";
             iframe.style.borderRadius = "12px";
-            iframe.style.overflow = "hidden";
 
             container.appendChild(iframe);
         });
@@ -1595,6 +1602,12 @@
         storageBucket: "FIREBASE_AUTH_STORAGEBUCKET",
         messagingSenderId: "FIREBASE_AUTH_MESSAGINGSENDERID",
         appId: "FIREBASE_API_APPID"
+    };
+
+    const widgetBaseConfig = {
+        apiKey: "WIDGET_SECRET_API_KEY",
+        projectId: "WIDGET_SECRET_PROJECT_ID",
+        appId: "WIDGET_SECRET_APP_ID"
     };
 
     const app = initializeApp(firebaseConfig);
