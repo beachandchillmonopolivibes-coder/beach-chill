@@ -676,14 +676,16 @@
             #user-rimanenti, #user-completati { font-size: 36px !important; }
 
             #mobileNav {
+                height: 100% !important; /* Forza il riempimento di tutto lo schermo */
+                box-sizing: border-box !important;
                 justify-content: flex-start !important;
-                padding-top: 80px !important; /* Spazio per la X di chiusura e il logo */
+                padding-top: 80px !important;
                 padding-bottom: 40px !important;
-                overflow-y: auto !important; /* Permette di scorrere col dito se lo schermo è piccolo */
+                overflow-y: auto !important;
             }
 
             #mobileNav a {
-                margin: 8px 0 !important; /* Avvicina leggermente i link per far spazio ai bottoni */
+                margin: 8px 0 !important;
             }
         }
         /* --------------------------------------------------- */
@@ -1457,7 +1459,7 @@
 
     // --- GESTIONE SCHEDE LOGIN (Registrazione rimossa) ---
     document.getElementById('nav-login-btn').addEventListener('click', () => { openModal('auth-modal'); });
-    document.getElementById('nav-user-btn').addEventListener('click', () => openModal('user-modal'));
+    document.getElementById('nav-user-btn').addEventListener('click', () => { openModal('user-modal'); });
     document.getElementById('nav-admin-btn').addEventListener('click', () => { openModal('admin-modal'); loadAdminData(); });
 
     document.getElementById('nav-login-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('auth-modal'); });
