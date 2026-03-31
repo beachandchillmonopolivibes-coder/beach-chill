@@ -674,6 +674,17 @@
 
             /* Testi più compatti */
             #user-rimanenti, #user-completati { font-size: 36px !important; }
+
+            #mobileNav {
+                justify-content: flex-start !important;
+                padding-top: 80px !important; /* Spazio per la X di chiusura e il logo */
+                padding-bottom: 40px !important;
+                overflow-y: auto !important; /* Permette di scorrere col dito se lo schermo è piccolo */
+            }
+
+            #mobileNav a {
+                margin: 8px 0 !important; /* Avvicina leggermente i link per far spazio ai bottoni */
+            }
         }
         /* --------------------------------------------------- */
     </style>
@@ -1108,9 +1119,10 @@
             <div style="display: flex; flex-direction: column; gap: 15px;">
 
                 <div style="position: relative;">
-                    <label style="color:#f39c12; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Cerca Utente (Testo Libero)</label>
-                    <input type="text" id="admin-user-search" list="admin-user-datalist" class="mp-input" placeholder="Inizia a digitare il nome o l'email..." style="margin-top: 5px; font-size: 16px;">
-                    <datalist id="admin-user-datalist"></datalist>
+                    <label style="color:#f39c12; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Seleziona Utente</label>
+                    <select id="admin-user-search" class="mp-input" style="margin-top: 5px; font-size: 16px; background-color: #2a2a2a; color: white;">
+                        <option value="">-- Scegli un utente --</option>
+                    </select>
                 </div>
 
                 <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
@@ -1652,7 +1664,7 @@
 
         // 1. Tabella
         const userSnapshot = await getDocs(query(collection(db, "cards"), orderBy("email")));
-        tbody.innerHTML = ""; datalist.innerHTML = "";
+        tbody.innerHTML = ""; userSelect.innerHTML = '<option value="">-- Scegli un utente --</option>'; // MODIFICATO
 
         userSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
@@ -1674,7 +1686,7 @@
                 </td>
               </tr>`;
 
-            datalist.innerHTML += `<option value="${email}">${nomeCompleto} (Rimasti: ${rimanenti})</option>`;
+            userSelect.innerHTML += `<option value="${email}">${nomeCompleto} (Rimasti: ${rimanenti})</option>`;
         });
 
         // 2. Ultimi 10 Logs globali
