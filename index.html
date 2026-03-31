@@ -1448,153 +1448,15 @@
         entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target); } });
     },{threshold:.1});
     document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
-
-
-    // ==========================================
-    // --- MOTORE GESTIONE IFRAME TORNEI LIVE ---
-    // ==========================================
-
-    // 1. Carica gli Iframe nella vista pubblica
-    window.loadPublicTournaments = async () => {
-        const container = document.getElementById('tournaments-container');
-        if(!container) return;
-
-        container.innerHTML = "";
-        // Questa chiamata usa il DB del SITO per sapere quali tornei mostrare
-        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
-
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
-            const iframe = document.createElement('iframe');
-
-            // Passa l'ID del torneo (dal DB sito) e le chiavi del WIDGET (dal widgetBaseConfig)
-            const params = new URLSearchParams({
-                title: data.title,
-                tournId: data.tournId,
-                apiKey: widgetBaseConfig.apiKey,
-                projectId: widgetBaseConfig.projectId,
-                appId: widgetBaseConfig.appId
-            });
-
-            iframe.src = `widget.html?${params.toString()}`;
-            iframe.style.width = "100%";
-            iframe.style.maxWidth = "600px";
-            iframe.style.height = "550px";
-            iframe.style.border = "none";
-            iframe.style.borderRadius = "12px";
-
-            container.appendChild(iframe);
-        });
-    };
-
-    // 2. Carica la lista nell'Admin Panel
-    window.loadTournamentsAdmin = async () => {
-        const list = document.getElementById('admin-tournaments-list');
-        if(!list) return;
-
-        list.innerHTML = "<p style='text-align:center; color:#aaa;'>Caricamento...</p>";
-        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
-        list.innerHTML = "";
-
-        if(snap.empty) {
-            list.innerHTML = "<p style='text-align:center; color:#666; font-size:13px;'>Nessun torneo attivo.</p>";
-            return;
-        }
-
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
-            list.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; border:1px solid rgba(0, 191, 255, 0.2);">
-                    <div>
-                        <strong style="color:#00bfff; font-size:15px;">${data.title}</strong><br>
-                        <span style="font-size:11px; color:#aaa;">ID: ${data.tournId}</span>
-                    </div>
-                    <button onclick="deleteTournament('${docSnap.id}')" style="background:rgba(231, 76, 60, 0.2); color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; padding:6px 12px; cursor:pointer;">Termina</button>
-                </div>`;
-        });
-    };
-
-    // 3. Elimina un torneo dal DB (Admin)
-    window.deleteTournament = async (id) => {
-        if(confirm("Vuoi davvero rimuovere questo torneo dalla vista pubblica?")) {
-            await deleteDoc(doc(db, "tournaments", id));
-            loadTournamentsAdmin();
-            loadPublicTournaments();
-        }
-    };
-
-    // 4. Listener Bottone "Pubblica Torneo"
-    const btnAddTourn = document.getElementById('admin-add-tourn-btn');
-    if(btnAddTourn) {
-        btnAddTourn.addEventListener('click', async () => {
-            const title = document.getElementById('admin-tourn-title').value.trim();
-            const tournId = document.getElementById('admin-tourn-id').value.trim();
-
-            if(!title || !tournId) {
-                alert("Compila Titolo e ID Torneo!");
-                return;
-            }
-
-            // Salva solo titolo e ID torneo (le API key sono gestite in modo fisso)
-            await addDoc(collection(db, "tournaments"), {
-                title: title, tournId: tournId, createdAt: serverTimestamp()
-            });
-
-            document.getElementById('admin-tourn-title').value = "";
-            document.getElementById('admin-tourn-id').value = "";
-
-            loadTournamentsAdmin();
-            loadPublicTournaments();
-        });
-    }
-
-    // --- CARICA IL TUO WIDGET INTATTO NELLA PAGINA ---
-    window.loadPublicTournaments = async () => {
-        const container = document.getElementById('tournaments-container');
-        if(!container) return;
-
-        container.innerHTML = "";
-        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
-
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
-            const iframe = document.createElement('iframe');
-
-            // Qui avviene la magia: chiama il TUO file widget.html e gli "inietta" la chiave nell'URL!
-            iframe.src = `widget.html?title=${encodeURIComponent(data.title)}&tournId=${encodeURIComponent(data.tournId)}&apiKey=${encodeURIComponent(data.apiKey)}`;
-
-            // Regola le dimensioni della finestra per non farla tagliare
-            iframe.style.width = "100%";
-            iframe.style.maxWidth = "600px";
-            iframe.style.height = "550px";
-            iframe.style.border = "none";
-            iframe.style.borderRadius = "12px";
-
-            container.appendChild(iframe);
-        });
-    };
-
-    // Avvia i widget al caricamento della pagina
-    loadPublicTournaments();
-
-    // --- ESECUZIONI AUTOMATICHE ---
-    const oldLoadAdminData = window.loadAdminData;
-    window.loadAdminData = async function() {
-        if(oldLoadAdminData) await oldLoadAdminData();
-        loadTournamentsAdmin();
-    };
-
-    loadPublicTournaments();
 </script>
 
-<!-- SCRIPT LOGIN -->
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    // Nota: rimossa l'importazione di createUserWithEmailAndPassword per disabilitare la registrazione pubblica
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, increment, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, increment, collection, addDoc, query, orderBy, limit, serverTimestamp, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-    // LE TUE CHIAVI FIREBASE
+    // LE TUE CHIAVI FIREBASE (Per il sito)
     const firebaseConfig = {
         apiKey: "FIREBASE_API_KEY",
         authDomain: "FIREBASE_AUTH_DOMAIN",
@@ -1604,6 +1466,7 @@
         appId: "FIREBASE_API_APPID"
     };
 
+    // LE TUE CHIAVI FIREBASE (Per i Tornei Live)
     const widgetBaseConfig = {
         apiKey: "WIDGET_SECRET_API_KEY",
         projectId: "WIDGET_SECRET_PROJECT_ID",
@@ -1644,51 +1507,44 @@
         setTimeout(() => closeModal('feedback-modal'), 3000);
     };
 
-    // --- GESTIONE SCHEDE LOGIN (Registrazione rimossa) ---
+    // --- GESTIONE SCHEDE LOGIN E MENU MOBILE ---
     document.getElementById('nav-login-btn').addEventListener('click', () => { openModal('auth-modal'); });
     document.getElementById('nav-user-btn').addEventListener('click', () => { openModal('user-modal'); });
     document.getElementById('nav-admin-btn').addEventListener('click', () => { openModal('admin-modal'); loadAdminData(); });
 
-    document.getElementById('nav-login-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('auth-modal'); });
-    document.getElementById('nav-user-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('user-modal'); });
-    document.getElementById('nav-admin-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('admin-modal'); loadAdminData(); });
-
-    // --- CONTROLLO ACCESSO (NOME UTENTE) ---
+    if(typeof closeMobile === 'function') {
+        document.getElementById('nav-login-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('auth-modal'); });
+        document.getElementById('nav-user-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('user-modal'); });
+        document.getElementById('nav-admin-btn-mobile').addEventListener('click', () => { closeMobile(); openModal('admin-modal'); loadAdminData(); });
+    }
 
     // --- CONTROLLO ACCESSO (NOME UTENTE E RUOLO DA FIRESTORE) ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // Nascondi Login, Mostra Logout (Desktop + Mobile)
             document.getElementById('nav-login-btn').classList.add('hidden');
             document.getElementById('nav-login-btn-mobile').classList.add('hidden');
             document.getElementById('nav-logout-btn').classList.remove('hidden');
             document.getElementById('nav-logout-btn-mobile').classList.remove('hidden');
             closeModal('auth-modal');
 
-            // --- TRUCCO NOME.COGNOME ---
             let cardId = user.email;
             if (cardId.includes('@beach.local')) {
                 cardId = cardId.replace('@beach.local', '');
             }
 
             try {
-                // 1. Cerca il documento utente tramite il suo UID univoco
                 let userDoc = await getDoc(doc(db, "users", user.uid));
 
-                // 2. Se non lo trova per UID, prova a cercarlo usando l'email
                 if (!userDoc.exists()) {
                     userDoc = await getDoc(doc(db, "users", user.email));
                 }
 
-                // 3. Verifica il ruolo in modo sicuro
                 if (userDoc.exists() && userDoc.data().role === 'admin') {
-                    // È UN ADMIN: Mostra il tasto gestione (Desktop + Mobile)
                     document.getElementById('nav-admin-btn').classList.remove('hidden');
                     document.getElementById('nav-admin-btn-mobile').classList.remove('hidden');
                     document.getElementById('nav-user-btn').classList.add('hidden');
                     document.getElementById('nav-user-btn-mobile').classList.add('hidden');
                 } else {
-                    // È UN UTENTE NORMALE: Mostra la tessera (Desktop + Mobile)
                     document.getElementById('nav-admin-btn').classList.add('hidden');
                     document.getElementById('nav-admin-btn-mobile').classList.add('hidden');
                     document.getElementById('nav-user-btn').classList.remove('hidden');
@@ -1699,8 +1555,6 @@
                     const nomeCompleto = (nome || cognome) ? `${nome} ${cognome}`.trim() : cardId;
 
                     document.getElementById('modal-user-email').innerText = nomeCompleto;
-
-                    // CARICA LA TESSERA
                     loadUserCard(cardId, nomeCompleto);
                 }
             } catch (error) {
@@ -1713,7 +1567,6 @@
                 loadUserCard(cardId, cardId);
             }
         } else {
-            // NESSUNO LOGGATO: Resetta tutta la navbar (Desktop + Mobile)
             document.getElementById('nav-login-btn').classList.remove('hidden');
             document.getElementById('nav-login-btn-mobile').classList.remove('hidden');
             document.getElementById('nav-user-btn').classList.add('hidden');
@@ -1725,17 +1578,14 @@
         }
     });
 
-    // --- AZIONI LOGIN (Solo Accesso) ---
+    // --- AZIONI LOGIN ---
     document.getElementById('auth-action-btn').addEventListener('click', async () => {
         const errEl = document.getElementById('auth-error-msg'); errEl.innerText = "";
-
-        // Prende il Nome.Cognome inserito, toglie gli spazi vuoti accidentali e mette tutto minuscolo
         const usernameInput = document.getElementById('auth-username').value.trim().toLowerCase().replace(/\s+/g, '');
         const p = document.getElementById('auth-password').value;
 
         if(!usernameInput || !p) { errEl.innerText = "Inserisci Nome.Cognome e password."; return; }
 
-        // TRUCCO: Aggiungiamo il dominio finto solo se l'utente non sta usando una vecchia email con la chiocciola
         let loginEmail = usernameInput;
         if (!loginEmail.includes('@')) {
             loginEmail = usernameInput + "@beach.local";
@@ -1753,31 +1603,28 @@
         closeModal('user-modal');
         closeModal('admin-modal');
         closeModal('user-history-modal');
-        if (typeof closeMobile === 'function') closeMobile(); // Chiude il tuo menu in modo sicuro
+        if (typeof closeMobile === 'function') closeMobile();
     };
 
     document.getElementById('nav-logout-btn').addEventListener('click', eseguiLogout);
     document.getElementById('nav-logout-btn-mobile').addEventListener('click', eseguiLogout);
 
     // --- LOGICA VISUALE TESSERA UTENTE ---
-
     window.loadUserCard = async (cardId, nomeCompleto) => {
         let cardData = null;
-        let actualDocId = cardId; // Ci serve per sapere quale doc aggiornare quando gratta
+        let actualDocId = cardId;
 
-        // 1. Tenta la ricerca veloce per ID Documento
         const cardRef = doc(db, "cards", cardId);
         const cardDoc = await getDoc(cardRef);
 
         if (cardDoc.exists()) {
             cardData = cardDoc.data();
         } else {
-            // 2. Piano B: Se l'ID del documento è casuale, cerca dentro i campi!
             const q = query(collection(db, "cards"), where("email", "==", cardId));
             const querySnap = await getDocs(q);
             if (!querySnap.empty) {
                 cardData = querySnap.docs[0].data();
-                actualDocId = querySnap.docs[0].id; // Salva l'ID reale del documento
+                actualDocId = querySnap.docs[0].id;
             }
         }
 
@@ -1785,7 +1632,6 @@
         container.innerHTML = "";
 
         if (!cardData) {
-            console.error("Tessera non trovata nel database per:", cardId);
             document.getElementById('user-rimanenti').innerText = "0";
             document.getElementById('user-completati').innerText = "0";
             return;
@@ -1822,7 +1668,6 @@
             const div = document.createElement('div');
             div.className = "grattino-container";
             div.innerHTML = `<div class="grattino-cover"></div>`;
-            // Passiamo l'actualDocId invece dell'email per evitare errori
             div.onclick = () => confirmAndScratch(actualDocId, div, nomeCompleto);
             container.appendChild(div);
         }
@@ -1844,8 +1689,8 @@
         });
     };
 
-    // --- CARICAMENTO DATI ADMIN ---
-    window.adminUsersList = []; // Array globale per i suggerimenti
+    // --- CARICAMENTO DATI ADMIN E LOGICA TORNEI ---
+    window.adminUsersList = [];
 
     async function loadAdminData() {
         const tbody = document.getElementById('admin-users-tbody');
@@ -1857,7 +1702,7 @@
             // 1. Tabella e salvataggio utenti
             const userSnapshot = await getDocs(query(collection(db, "cards"), orderBy("email")));
             tbody.innerHTML = "";
-            window.adminUsersList = []; // Svuota la lista vecchia
+            window.adminUsersList = [];
 
             userSnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
@@ -1879,7 +1724,6 @@
                     </td>
                   </tr>`;
 
-                // Salva i dati per la ricerca ibrida
                 window.adminUsersList.push({ email: email, nomeCompleto: nomeCompleto });
             });
 
@@ -1910,17 +1754,23 @@
                 });
                 if(logsDiv.innerHTML === "") logsDiv.innerHTML = "<p style='text-align:center; color:#666;'>Nessun log recente valido.</p>";
             }
+
+            // 3. Carica i Tornei nel Pannello Admin
+            if (typeof window.loadTournamentsAdmin === 'function') {
+                await window.loadTournamentsAdmin();
+            }
+
         } catch (error) {
             console.error(error);
             tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding: 15px; color:#e74c3c;'>Errore.</td></tr>";
         }
     }
 
+    // --- RICERCA IBRIDA ---
     const searchInput = document.getElementById('admin-user-search');
     const dropdown = document.getElementById('admin-user-dropdown');
 
     if (searchInput && dropdown) {
-        // Mentre digiti, filtra la lista
         searchInput.addEventListener('input', function() {
             const val = this.value.toLowerCase().trim();
             dropdown.innerHTML = '';
@@ -1945,14 +1795,12 @@
                     div.style.color = '#fff';
                     div.innerHTML = `<strong>${u.nomeCompleto}</strong> <span style="font-size:12px; color:#aaa;">(${u.email})</span>`;
 
-                    // onmousedown è fondamentale su mobile per evitare che si chiuda prima del click
                     div.onmousedown = (e) => {
                         e.preventDefault();
-                        searchInput.value = u.email; // Inserisce l'email corretta nell'input per i bottoni
+                        searchInput.value = u.email;
                         dropdown.style.display = 'none';
                     };
 
-                    // Effetto passaggio mouse (per PC)
                     div.onmouseover = () => div.style.background = 'rgba(243,156,18,0.2)';
                     div.onmouseout = () => div.style.background = 'transparent';
 
@@ -1964,19 +1812,11 @@
             }
         });
 
-        // Nascondi suggerimenti se clicchi fuori
-        searchInput.addEventListener('blur', () => {
-            dropdown.style.display = 'none';
-        });
-
-        // Mostra di nuovo se ci clicchi sopra e c'è del testo
-        searchInput.addEventListener('focus', () => {
-            if(searchInput.value) searchInput.dispatchEvent(new Event('input'));
-        });
+        searchInput.addEventListener('blur', () => dropdown.style.display = 'none');
+        searchInput.addEventListener('focus', () => { if(searchInput.value) searchInput.dispatchEvent(new Event('input')); });
     }
 
     // --- LOGICA DELLE 3 AZIONI ADMIN ---
-
     const updateWorkout = async (actionType) => {
         const emailInput = document.getElementById('admin-user-search').value.trim().toLowerCase();
         const amount = parseInt(document.getElementById('admin-workout-amount').value);
@@ -1992,13 +1832,11 @@
         let cardRef = null;
         let data = null;
 
-        // 1. Cerca per ID Documento
         const directDoc = await getDoc(doc(db, "cards", emailInput));
         if (directDoc.exists()) {
             cardRef = doc(db, "cards", emailInput);
             data = directDoc.data();
         } else {
-            // 2. Cerca all'interno dei campi
             const q = query(collection(db, "cards"), where("email", "==", emailInput));
             const querySnap = await getDocs(q);
             if (!querySnap.empty) {
@@ -2123,33 +1961,27 @@
             return;
         }
 
-        // Generazione automatica del formato "nome.cognome"
         const cleanNome = nome.toLowerCase().replace(/\s+/g, '');
         const cleanCognome = cognome.toLowerCase().replace(/\s+/g, '');
         const username = `${cleanNome}.${cleanCognome}`;
         const fakeEmail = `${username}@beach.local`;
 
         try {
-            // 1. Crea l'utente con la finta email
             const userCred = await createUserWithEmailAndPassword(secondaryAuth, fakeEmail, password);
             await signOut(secondaryAuth);
 
-            // 2. Salva in DB usando lo username come identificativo
             await setDoc(doc(db, "users", userCred.user.uid), {
                 username: username, fakeEmail: fakeEmail, role: 'user', nome: nome, cognome: cognome
             });
 
-            // 3. Genera la tessera usando lo username come ID del documento
             await setDoc(doc(db, "cards", username), {
                 rimanenti: 0, totali: 0, email: username, nome: nome, cognome: cognome
             });
 
-            // 4. Pulisci campi
             document.getElementById('admin-new-nome').value = "";
             document.getElementById('admin-new-cognome').value = "";
             document.getElementById('admin-new-password').value = "";
 
-            // 5. Mostra il Feedback dicendo all'admin quale username dare al cliente
             openFeedbackModal(true, "Utente Creato", `Tessera pronta! L'accesso per il cliente è: <br><strong style="font-size: 20px;">${username}</strong>`);
             loadAdminData();
 
@@ -2158,6 +1990,101 @@
             errorMsg.innerText = "Errore. (Forse questo Nome.Cognome esiste già?)";
         }
     });
+
+    // ==========================================
+    // --- MOTORE GESTIONE IFRAME TORNEI LIVE ---
+    // ==========================================
+
+    window.loadPublicTournaments = async () => {
+        const container = document.getElementById('tournaments-container');
+        if(!container) return;
+
+        container.innerHTML = "";
+        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const iframe = document.createElement('iframe');
+
+            const params = new URLSearchParams({
+                title: data.title,
+                tournId: data.tournId,
+                apiKey: widgetBaseConfig.apiKey,
+                projectId: widgetBaseConfig.projectId,
+                appId: widgetBaseConfig.appId
+            });
+
+            iframe.src = `widget.html?${params.toString()}`;
+            iframe.style.width = "100%";
+            iframe.style.maxWidth = "600px";
+            iframe.style.height = "550px";
+            iframe.style.border = "none";
+            iframe.style.borderRadius = "12px";
+
+            container.appendChild(iframe);
+        });
+    };
+
+    window.loadTournamentsAdmin = async () => {
+        const list = document.getElementById('admin-tournaments-list');
+        if(!list) return;
+
+        list.innerHTML = "<p style='text-align:center; color:#aaa;'>Caricamento...</p>";
+        const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
+        list.innerHTML = "";
+
+        if(snap.empty) {
+            list.innerHTML = "<p style='text-align:center; color:#666; font-size:13px;'>Nessun torneo attivo.</p>";
+            return;
+        }
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            list.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:12px; border-radius:8px; border:1px solid rgba(0, 191, 255, 0.2); margin-bottom: 5px;">
+                    <div>
+                        <strong style="color:#00bfff; font-size:15px;">${data.title}</strong><br>
+                        <span style="font-size:11px; color:#aaa;">ID: ${data.tournId}</span>
+                    </div>
+                    <button onclick="deleteTournament('${docSnap.id}')" style="background:rgba(231, 76, 60, 0.2); color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; padding:6px 12px; cursor:pointer;">Termina</button>
+                </div>`;
+        });
+    };
+
+    window.deleteTournament = async (id) => {
+        if(confirm("Vuoi davvero rimuovere questo torneo dalla vista pubblica?")) {
+            await deleteDoc(doc(db, "tournaments", id));
+            window.loadTournamentsAdmin();
+            window.loadPublicTournaments();
+        }
+    };
+
+    const btnAddTourn = document.getElementById('admin-add-tourn-btn');
+    if(btnAddTourn) {
+        btnAddTourn.addEventListener('click', async () => {
+            const title = document.getElementById('admin-tourn-title').value.trim();
+            const tournId = document.getElementById('admin-tourn-id').value.trim();
+
+            if(!title || !tournId) {
+                alert("Compila Titolo e ID Torneo!");
+                return;
+            }
+
+            await addDoc(collection(db, "tournaments"), {
+                title: title, tournId: tournId, createdAt: serverTimestamp()
+            });
+
+            document.getElementById('admin-tourn-title').value = "";
+            document.getElementById('admin-tourn-id').value = "";
+
+            window.loadTournamentsAdmin();
+            window.loadPublicTournaments();
+        });
+    }
+
+    // Caricamento iniziale dei Tornei Pubblici sulla pagina
+    window.loadPublicTournaments();
+
 </script>
 </body>
 </html>
