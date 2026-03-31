@@ -2002,6 +2002,20 @@
         container.innerHTML = "";
         const snap = await getDocs(query(collection(db, "tournaments"), orderBy("createdAt", "desc")));
 
+        // NOVITÀ: Aggiunge il titolo solo se esiste almeno un torneo nel database!
+        if (!snap.empty) {
+            const sectionTitle = document.createElement('h2');
+            sectionTitle.innerText = "🏆 Tornei Live";
+            sectionTitle.style.width = "100%"; // Prende tutta la riga
+            sectionTitle.style.textAlign = "center";
+            sectionTitle.style.color = "#00f3ff";
+            sectionTitle.style.textTransform = "uppercase";
+            sectionTitle.style.letterSpacing = "2px";
+            sectionTitle.style.marginTop = "0";
+            sectionTitle.style.marginBottom = "20px";
+            container.appendChild(sectionTitle);
+        }
+
         snap.forEach(docSnap => {
             const data = docSnap.data();
             const iframe = document.createElement('iframe');
@@ -2016,8 +2030,8 @@
 
             iframe.src = `widget.html?${params.toString()}`;
             iframe.style.width = "100%";
-            iframe.style.maxWidth = "1100px"; // Molto più largo per ospitare due colonne
-            iframe.style.height = "750px";    // Più alto per evitare lo scroll interno
+            iframe.style.maxWidth = "1100px"; // Modificato per la griglia a due colonne
+            iframe.style.height = "750px";    // Modificato per dare spazio alla griglia
             iframe.style.border = "none";
             iframe.style.borderRadius = "12px";
 
