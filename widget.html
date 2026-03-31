@@ -19,9 +19,24 @@
             border: 1px solid rgba(0, 243, 255, 0.2);
             border-radius: 12px;
             padding: 20px;
-            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box; /* Evita che il padding sbordi */
             margin: 0 auto;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* NUOVA GRIGLIA RESPONSIVE */
+        .widget-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Due colonne uguali su PC */
+            gap: 30px;
+            align-items: start; /* Allinea in alto */
+        }
+
+        @media (max-width: 768px) {
+            .widget-grid {
+                grid-template-columns: 1fr; /* Una colonna singola impilata su Mobile */
+            }
         }
         h2 {
             color: #00f3ff;
