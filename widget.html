@@ -20,24 +20,25 @@
             border-radius: 12px;
             padding: 20px;
             width: 100%;
-            box-sizing: border-box; /* Evita che il padding sbordi */
+            box-sizing: border-box;
             margin: 0 auto;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
         
-        /* NUOVA GRIGLIA RESPONSIVE */
+        /* Struttura a Griglia per separare Partite e Classifiche */
         .widget-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* Due colonne uguali su PC */
+            grid-template-columns: 1fr 1fr;
             gap: 30px;
-            align-items: start; /* Allinea in alto */
+            align-items: start;
         }
 
         @media (max-width: 768px) {
             .widget-grid {
-                grid-template-columns: 1fr; /* Una colonna singola impilata su Mobile */
+                grid-template-columns: 1fr; /* Impila su mobile */
             }
         }
+
         h2 {
             color: #00f3ff;
             margin-top: 0;
@@ -63,6 +64,28 @@
             border-left-color: #4CAF50;
             opacity: 0.8;
         }
+        .match-card.live-match {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+            transform: scale(1.02);
+            margin: 15px 0;
+            padding: 16px;
+        }
+        .blinking-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
         .team-row {
             display: flex;
             justify-content: space-between;
@@ -82,6 +105,8 @@
             margin-bottom: 8px;
             text-transform: uppercase;
         }
+
+        /* Table Styles for Standings */
         .standings-table {
             width: 100%;
             border-collapse: collapse;
@@ -102,6 +127,7 @@
             background: rgba(255,255,255,0.05);
         }
         .pts { color: #00f3ff; font-weight: bold; }
+
         .loading {
             text-align: center;
             color: #00f3ff;
@@ -120,10 +146,9 @@
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         // === CATTURA DINAMICA DELLE VARIABILI ===
-        // Questa è la riga che mancava! Legge i segreti inviati da index.html
         const urlParams = new URLSearchParams(window.location.search);
 
-        const TOURNAMENT_ID = urlParams.get('tournId');
+        const tournId = urlParams.get('tournId');
         const customTitle = urlParams.get('title') || 'Torneo Live';
         
         const apiKey = urlParams.get('apiKey');
@@ -132,27 +157,27 @@
 
         // === CONFIGURAZIONE FIREBASE DINAMICA ===
         const firebaseConfig = {
-            apiKey: apiKey, 
+            apiKey: apiKey,
             projectId: projectId,
-            appId: appId 
+            appId: appId
         };
-
-        const widgetDiv = document.getElementById('bv-widget');
-
-        if (!TOURNAMENT_ID || !apiKey || !projectId) {
-            widgetDiv.innerHTML = '<div style="color: #ff6b00; text-align:center; padding: 20px;">Errore: Chiavi di sicurezza o ID Torneo mancanti.</div>';
-            throw new Error("Missing parameters");
-        }
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Ascolto in tempo reale sul documento
-        const docRef = doc(db, 'public_tournaments', TOURNAMENT_ID);
+        const widgetDiv = document.getElementById('bv-widget');
+
+        if (!tournId || !apiKey || !projectId) {
+            widgetDiv.innerHTML = '<div style="color: #ff6b00; text-align:center; padding: 20px;">Errore: Chiavi di sicurezza o ID Torneo mancanti dall\'URL.</div>';
+            throw new Error("Missing parameters");
+        }
+
+        // Ascolto in tempo reale sul documento pubblico usando il tournId (ID Torneo)
+        const docRef = doc(db, 'public_tournaments', tournId);
 
         onSnapshot(docRef, (docSnap) => {
             if (!docSnap.exists()) {
-                widgetDiv.innerHTML = '<div style="color: #ff6b00; text-align:center;">Torneo non trovato. Verifica l\'ID inserito nel Pannello Admin.</div>';
+                widgetDiv.innerHTML = '<div style="color: #ff6b00; text-align:center;">Torneo non trovato o API Key errata.</div>';
                 return;
             }
 
@@ -160,43 +185,73 @@
             renderWidget(data);
         }, (error) => {
             console.error("Errore di connessione a Firebase:", error);
-            widgetDiv.innerHTML = '<div style="color: red; text-align:center;">Errore di connessione ai dati live. Verifica l\'API Key e i permessi.</div>';
+            widgetDiv.innerHTML = '<div style="color: red; text-align:center;">Errore di connessione ai dati live.</div>';
         });
 
         function renderWidget(data) {
-            let headerHtml = `<h2>${customTitle}</h2>`;
+            const statusStr = data.status === 'archived' ? ' (Archiviato)' : (data.status === 'knockout_stage' ? ' - Fase Finale' : ' - Fase a Gironi');
+            let headerHtml = `<h2>${customTitle}<span style="font-size: 0.6em; color: #aaa;">${statusStr}</span></h2>`;
+            
             let leftColumn = "";
             let rightColumn = "";
 
-            // --- COLONNA SINISTRA: PARTITE ---
+            // ==========================================
+            // COLONNA SINISTRA: PARTITE (Live, Prossime, Finite)
+            // ==========================================
+
             // 1. Partite Live
-            const liveMatches = data.matches ? data.matches.filter(m => !m.isFinished) : [];
+            const liveMatches = data.matches ? data.matches.filter(m => m.status === 'live' && !m.isFinished) : [];
             if (liveMatches.length > 0) {
-                leftColumn += `<h3>Partite Live / Prossime</h3>`;
+                leftColumn += `<h3 style="color: #ef4444;"><span class="blinking-dot"></span> LIVE ORA</h3>`;
                 liveMatches.forEach(match => {
                     const t1Name = getTeamName(data.groups, match.team1Id);
                     const t2Name = getTeamName(data.groups, match.team2Id);
-
                     leftColumn += `
-                    <div class="match-card">
+                    <div class="match-card live-match">
                         <div class="meta">
-                            <span>${match.phaseType ? match.phaseType.replace('_', ' ') : ''}</span>
-                            <span>${match.scheduledTime ? '⏰ ' + match.scheduledTime : 'Live'}</span>
+                            <span>${match.phaseType.replace('_', ' ')}</span>
+                            <span style="color: #ef4444; font-weight: bold;">IN CORSO</span>
                         </div>
                         <div class="team-row">
                             <span>${t1Name}</span>
-                            <span class="score">${match.team1Score ? match.team1Score.join(' - ') : '0'}</span>
+                            <span class="score">${match.team1Score.join(' - ')}</span>
                         </div>
                         <div class="team-row">
                             <span>${t2Name}</span>
-                            <span class="score">${match.team2Score ? match.team2Score.join(' - ') : '0'}</span>
+                            <span class="score">${match.team2Score.join(' - ')}</span>
                         </div>
                     </div>`;
                 });
             }
 
-            // 2. Ultimi Risultati
-            const finishedMatches = data.matches ? data.matches.filter(m => m.isFinished).slice(-3) : [];
+            // 1b. Partite Programmate (Upcoming) ordinate cronologicamente
+            const scheduledMatches = data.matches ? data.matches
+                .filter(m => !m.isFinished && m.status !== 'live' && m.status !== 'finished')
+                .sort((a, b) => {
+                    const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity;
+                    const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity;
+                    return dateA - dateB;
+                }) : [];
+
+            if (scheduledMatches.length > 0) {
+                leftColumn += `<h3>Prossime Partite</h3>`;
+                scheduledMatches.forEach(match => {
+                    const t1Name = getTeamName(data.groups, match.team1Id);
+                    const t2Name = getTeamName(data.groups, match.team2Id);
+                    const timeStr = match.scheduledAt ? new Date(match.scheduledAt).toLocaleString('it-IT', {day: '2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : (match.scheduledTime || 'DA DEFINIRE');
+                    leftColumn += `
+                    <div class="match-card" style="padding: 8px; margin-bottom: 6px;">
+                        <div class="meta" style="margin-bottom: 4px;">
+                            <span>${match.phaseType.replace('_', ' ')}</span>
+                            <span>${timeStr !== 'DA DEFINIRE' ? '⏰ ' + timeStr : timeStr}</span>
+                        </div>
+                        <div class="team-row" style="font-size: 0.9em; margin: 2px 0;"><span>${t1Name}</span> <span style="color:#666;">vs</span> <span>${t2Name}</span></div>
+                    </div>`;
+                });
+            }
+
+            // 2. Ultimi Risultati (Ultime 3 finite)
+            const finishedMatches = data.matches ? data.matches.filter(m => m.isFinished || m.status === 'finished').slice(-3) : [];
             if (finishedMatches.length > 0) {
                  leftColumn += `<h3>Ultimi Risultati</h3>`;
                  finishedMatches.forEach(match => {
@@ -204,20 +259,75 @@
                     const t2Name = getTeamName(data.groups, match.team2Id);
                     leftColumn += `
                     <div class="match-card finished">
-                        <div class="meta"><span>${match.phaseType ? match.phaseType.replace('_', ' ') : ''}</span> <span>FINITA</span></div>
+                        <div class="meta"><span>${match.phaseType.replace('_', ' ')}</span> <span>${match.scheduledTime ? '⏰ ' + match.scheduledTime + ' - ' : ''}FINITA</span></div>
                         <div class="team-row"><span>${t1Name}</span> <span class="score">${match.team1Score.join(' - ')}</span></div>
                         <div class="team-row"><span>${t2Name}</span> <span class="score">${match.team2Score.join(' - ')}</span></div>
                     </div>`;
                  });
             }
+            
+            if(leftColumn === "") leftColumn = `<p style="color:#aaa; text-align:center;">Nessuna partita da mostrare al momento.</p>`;
 
-            // Se non ci sono partite, metti un messaggio segnaposto
-            if(leftColumn === "") {
-                leftColumn = `<p style="color:#aaa; text-align:center;">Nessuna partita al momento.</p>`;
+            // ==========================================
+            // COLONNA DESTRA: CLASSIFICHE E TABELLONE FINALE
+            // ==========================================
+
+            // 3. Renderizzazione Tabellone Finale (Se attivato)
+            if (data.hasKnockoutStarted === true) {
+                const bracketMatches = data.matches ? data.matches.filter(m => m.phaseType !== 'groups') : [];
+                if (bracketMatches.length > 0) {
+                    rightColumn += `<h3 style="color: #c5b4e3; border-bottom: 1px solid rgba(197,180,227,0.3); padding-bottom: 5px;">Tabellone Fasi Finali</h3>`;
+
+                    const phases = ['round_16', 'quarter_finals', 'semi_finals', 'finals', 'third_place'];
+                    phases.forEach(phase => {
+                        const phaseMatches = bracketMatches.filter(m => m.phaseType === phase);
+                        if (phaseMatches.length > 0) {
+                            rightColumn += `<h4>${phase === 'third_place' ? 'Finale 3°/4° Posto' : phase.replace('_', ' ').toUpperCase()}</h4>`;
+                            phaseMatches.forEach(match => {
+                                if (match.legIndex === 1) return; // Salta il ritorno, viene accodato sotto
+
+                                const t1Name = getTeamName(data.groups, match.team1Id);
+                                const t2Name = getTeamName(data.groups, match.team2Id);
+                                const returnMatch = bracketMatches.find(m => m.nextMatchId === match.id && m.legIndex === 1);
+
+                                const isMatchLive = match.status === 'live';
+                                const timeStrMatch = match.scheduledAt ? new Date(match.scheduledAt).toLocaleString('it-IT', {day: '2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : (match.scheduledTime || 'DA DEFINIRE');
+
+                                rightColumn += `
+                                <div class="match-card ${match.isFinished ? 'finished' : ''} ${isMatchLive ? 'live-match' : ''}" style="${!match.isFinished && !isMatchLive ? 'border-left-color: #c5b4e3;' : ''}">
+                                    <div class="meta">
+                                        <span>${timeStrMatch !== 'DA DEFINIRE' ? '⏰ ' + timeStrMatch : timeStrMatch}</span>
+                                        ${match.isFinished ? '<span>FINITA</span>' : isMatchLive ? '<span style="color:#ef4444" class="blinking-dot"></span>' : ''}
+                                    </div>
+                                    ${returnMatch ? '<div style="font-size:0.7rem; color:#c5b4e3; margin-bottom:4px;">Andata</div>' : ''}
+                                    <div class="team-row"><span>${t1Name}</span> <span class="score">${match.team1Score ? match.team1Score.join(' - ') : '0'}</span></div>
+                                    <div class="team-row"><span>${t2Name}</span> <span class="score">${match.team2Score ? match.team2Score.join(' - ') : '0'}</span></div>
+                                `;
+
+                                if (returnMatch) {
+                                    const isReturnLive = returnMatch.status === 'live';
+                                    const timeStrReturn = returnMatch.scheduledAt ? new Date(returnMatch.scheduledAt).toLocaleString('it-IT', {day: '2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : (returnMatch.scheduledTime || 'DA DEFINIRE');
+
+                                    rightColumn += `
+                                    <div style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 8px; padding-top: 8px;" class="${isReturnLive ? 'live-match' : ''}">
+                                        <div class="meta">
+                                            <span>${timeStrReturn !== 'DA DEFINIRE' ? '⏰ ' + timeStrReturn : timeStrReturn}</span>
+                                            ${returnMatch.isFinished ? '<span>FINITA</span>' : isReturnLive ? '<span style="color:#ef4444" class="blinking-dot"></span>' : ''}
+                                        </div>
+                                        <div style="font-size:0.7rem; color:#ff6b00; margin-bottom:4px;">Ritorno</div>
+                                        <div class="team-row"><span>${getTeamName(data.groups, returnMatch.team1Id)}</span> <span class="score">${returnMatch.team1Score ? returnMatch.team1Score.join(' - ') : '0'}</span></div>
+                                        <div class="team-row"><span>${getTeamName(data.groups, returnMatch.team2Id)}</span> <span class="score">${returnMatch.team2Score ? returnMatch.team2Score.join(' - ') : '0'}</span></div>
+                                    </div>
+                                    `;
+                                }
+                                rightColumn += `</div>`;
+                            });
+                        }
+                    });
+                }
             }
 
-
-            // --- COLONNA DESTRA: CLASSIFICHE ---
+            // 4. Classifiche Gironi
             if (data.groups && data.groups.length > 0) {
                 rightColumn += `<h3>Classifiche Gironi</h3>`;
                 data.groups.forEach(group => {
@@ -246,11 +356,11 @@
                     });
                     rightColumn += `</tbody></table>`;
                 });
-            } else {
-                rightColumn = `<p style="color:#aaa; text-align:center;">Classifiche non ancora disponibili.</p>`;
             }
+            
+            if(rightColumn === "") rightColumn = `<p style="color:#aaa; text-align:center;">Classifiche e tabelloni in fase di definizione.</p>`;
 
-            // --- UNISCI TUTTO NELLA GRIGLIA ---
+            // Stampa tutto nella griglia!
             widgetDiv.innerHTML = headerHtml + `
                 <div class="widget-grid">
                     <div class="col-left">${leftColumn}</div>
