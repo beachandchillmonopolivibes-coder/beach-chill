@@ -141,6 +141,31 @@
             color: #00f3ff;
             padding: 20px;
         }
+        /* --- Custom Scrollbar Glassmorphism --- */
+        /* Per Chrome, Edge, Safari */
+        ::-webkit-scrollbar {
+            width: 8px; /* Rende la barra molto più sottile */
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 12, 16, 0.3); /* Sfondo traccia quasi invisibile */
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.3); /* Azzurro neon semi-trasparente */
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 243, 255, 0.8); /* Si illumina quando ci passi sopra col mouse */
+        }
+
+        /* Per Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 243, 255, 0.4) transparent;
+        }
     </style>
 </head>
 <body>
