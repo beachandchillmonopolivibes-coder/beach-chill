@@ -143,28 +143,35 @@
         }
         /* --- Custom Scrollbar Glassmorphism --- */
         /* Per Chrome, Edge, Safari */
-        ::-webkit-scrollbar {
-            width: 8px; /* Rende la barra molto più sottile */
+       ::-webkit-scrollbar,
+        .widget-container::-webkit-scrollbar {
+            width: 6px; /* Ancora più sottile ed elegante */
+            height: 6px;
         }
         
-        ::-webkit-scrollbar-track {
-            background: rgba(11, 12, 16, 0.3); /* Sfondo traccia quasi invisibile */
+        ::-webkit-scrollbar-track,
+        .widget-container::-webkit-scrollbar-track {
+            background: rgba(11, 12, 16, 0.2); 
             border-radius: 10px;
         }
         
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 243, 255, 0.3); /* Azzurro neon semi-trasparente */
+        ::-webkit-scrollbar-thumb,
+        .widget-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.5); /* Azzurro neon */
             border-radius: 10px;
+            border: 1px solid rgba(11, 12, 16, 0.8); /* Piccolo bordino scuro per staccarla */
         }
         
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 243, 255, 0.8); /* Si illumina quando ci passi sopra col mouse */
+        ::-webkit-scrollbar-thumb:hover,
+        .widget-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 243, 255, 1); /* Si illumina al passaggio del mouse */
         }
 
-        /* Per Firefox */
+        /* Supporto per Firefox su tutti gli elementi */
         * {
             scrollbar-width: thin;
-            scrollbar-color: rgba(0, 243, 255, 0.4) transparent;
+            scrollbar-color: rgba(0, 243, 255, 0.5) rgba(11, 12, 16, 0.2);
+        }
         }
     </style>
 </head>
