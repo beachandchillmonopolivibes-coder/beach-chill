@@ -1767,32 +1767,33 @@
         }
     }
 
-    window.deleteUser = async (userId) => {
-        openConfirmModal(async () => {
+   window.deleteUser = async (userId) => {
+        // Usa il pop-up nativo del browser (sta sempre in primissimo piano)
+        if (confirm("Sei sicuro di voler eliminare definitivamente questo utente e la sua scheda? Questa azione è irreversibile.")) {
             try {
                 // 1. Elimina la scheda d'allenamento dalla collection "cards"
                 await deleteDoc(doc(db, "cards", userId));
-
+                
                 // 2. Cerca l'utente nella collection "users" e rimuovilo
-                // (Nel tuo db l'ID documento in "cards" corrisponde al campo "username" in "users")
                 const qUsers = query(collection(db, "users"), where("username", "==", userId));
                 const usersSnap = await getDocs(qUsers);
-
+                
                 const deletePromises = [];
                 usersSnap.forEach((uDoc) => {
                     deletePromises.push(deleteDoc(doc(db, "users", uDoc.id)));
                 });
                 await Promise.all(deletePromises);
 
+                // Mostra il feedback di successo
                 openFeedbackModal(true, "✅ Eliminato", "Utente e scheda rimossi definitivamente dal DB.");
-
+                
                 // Ricarica la tabella admin per mostrare l'aggiornamento
-                loadAdminData();
+                loadAdminData(); 
             } catch(error) {
                 console.error("Errore durante l'eliminazione:", error);
                 openFeedbackModal(false, "⚠️ Errore", "Si è verificato un errore durante l'eliminazione.");
             }
-        });
+        }
     };
     // --- RICERCA IBRIDA ---
     const searchInput = document.getElementById('admin-user-search');
