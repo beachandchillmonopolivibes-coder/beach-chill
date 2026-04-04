@@ -413,12 +413,22 @@
                         </thead>
                         <tbody>
                     `;
-                    group.teams.forEach(team => {
+                    const sortedTeams = [...group.teams].sort((a, b) => {
+                        if (b.points !== a.points) return b.points - a.points;
+                        if (b.setsWon !== a.setsWon) return b.setsWon - a.setsWon;
+
+                        const diffA = a.totalPointsScored - a.totalPointsConceded;
+                        const diffB = b.totalPointsScored - b.totalPointsConceded;
+                        if (diffB !== diffA) return diffB - diffA;
+
+                        return a.name.localeCompare(b.name);
+                    });
+
+                    sortedTeams.forEach(team => {
                         const diff = team.totalPointsScored - team.totalPointsConceded;
-                        const teamHtmlForTable = getTeamHtml(team); // Applica il sottotesto anche in classifica
-                        rightColumn += `
+                        html += `
                         <tr>
-                            <td>${teamHtmlForTable}</td>
+                            <td>${team.name}</td>
                             <td class="pts">${team.points}</td>
                             <td>${team.setsWon}-${team.setsLost}</td>
                             <td>${diff > 0 ? '+'+diff : diff}</td>
